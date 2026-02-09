@@ -1,7 +1,7 @@
 import { FastifyInstance } from 'fastify';
 import { ZodTypeProvider } from 'fastify-type-provider-zod';
-import { campeonatoResponseSchema, createCampeonatoSchema, createTorneoSchema } from './tournaments.schemas.js';
-import { createCampeonatoHandler, createTorneoHandler, getCampeonatosHandler, deleteCampeonatoHandler, deleteTorneoHandler } from './tournaments.controller.js';
+import { addTeamToTorneoSchema, campeonatoResponseSchema, createCampeonatoSchema, createTorneoSchema, generateDrawSchema, updateCampeonatoSchema, updateTorneoSchema } from './tournaments.schemas.js';
+import { createCampeonatoHandler, createTorneoHandler, getCampeonatosHandler, deleteCampeonatoHandler, deleteTorneoHandler, generateDrawHandler, updateCampeonatoHandler, updateTorneoHandler, createTeamRegistrationHandler, promoteToKnockoutHandler } from './tournaments.controller.js';
 import { verifyRole } from '../auth/auth.middleware.js';
 import { z } from 'zod';
 
@@ -27,6 +27,21 @@ export async function tournamentRoutes(app: FastifyInstance) {
             }
         });
 
+
+
+        // Team Registration (Authenticated Users - Captains)
+        privateApp.withTypeProvider<ZodTypeProvider>().post('/torneos/:id/inscripciones', {
+            schema: {
+                tags: ['Inscripciones'],
+                summary: 'Register a team to a tournament',
+                security: [{ bearerAuth: [] }],
+                params: z.object({ id: z.string() }),
+                body: addTeamToTorneoSchema,
+                response: {
+                    201: z.object({ id: z.number(), estado: z.string() })
+                }
+            }
+        }, createTeamRegistrationHandler);
 
         // Admin only routes
         privateApp.register(async (adminApp) => {
@@ -56,6 +71,33 @@ export async function tournamentRoutes(app: FastifyInstance) {
                 }
             }, createTorneoHandler);
 
+
+            adminApp.withTypeProvider<ZodTypeProvider>().put('/campeonatos/:id', {
+                schema: {
+                    tags: ['Torneos'],
+                    summary: 'Update a championship',
+                    security: [{ bearerAuth: [] }],
+                    params: z.object({ id: z.string() }),
+                    body: updateCampeonatoSchema,
+                    response: {
+                        200: campeonatoResponseSchema
+                    }
+                }
+            }, updateCampeonatoHandler);
+
+            adminApp.withTypeProvider<ZodTypeProvider>().put('/torneos/:id', {
+                schema: {
+                    tags: ['Torneos'],
+                    summary: 'Update a tournament',
+                    security: [{ bearerAuth: [] }],
+                    params: z.object({ id: z.string() }),
+                    body: updateTorneoSchema,
+                    response: {
+                        200: z.object({ id: z.number(), disciplina: z.string() })
+                    }
+                }
+            }, updateTorneoHandler);
+
             adminApp.withTypeProvider<ZodTypeProvider>().delete('/campeonatos/:id', {
                 schema: {
                     tags: ['Torneos'],
@@ -79,6 +121,33 @@ export async function tournamentRoutes(app: FastifyInstance) {
                     }
                 }
             }, deleteTorneoHandler);
+
+            adminApp.withTypeProvider<ZodTypeProvider>().post('/torneos/:id/sorteo', {
+                schema: {
+                    tags: ['Torneos'],
+                    summary: 'Generate draw (Brackets/Groups) for a tournament',
+                    security: [{ bearerAuth: [] }],
+                    params: z.object({ id: z.string() }),
+                    body: generateDrawSchema,
+                    response: {
+                        201: z.any()
+                    }
+                }
+            }, generateDrawHandler);
+
+            adminApp.withTypeProvider<ZodTypeProvider>().post('/torneos/:id/promover', {
+                schema: {
+                    tags: ['Torneos'],
+                    summary: 'Promote teams from Group Stage to Knockout Stage',
+                    security: [{ bearerAuth: [] }],
+                    params: z.object({ id: z.string() }),
+                    response: {
+                        201: z.any()
+                    }
+                }
+            }, promoteToKnockoutHandler);
+
+
         });
     });
 }

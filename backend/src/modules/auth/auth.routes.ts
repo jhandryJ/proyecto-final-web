@@ -1,28 +1,10 @@
 import { FastifyInstance } from 'fastify';
 import { ZodTypeProvider } from 'fastify-type-provider-zod';
-import { loginResponseSchema, loginUserSchema, registerUserSchema } from './auth.schemas.js';
-import { loginUserHandler, registerUserHandler, deleteUserHandler, getUsersHandler } from './auth.controller.js';
+import { loginResponseSchema, loginUserSchema, registerUserSchema, forgotPasswordSchema, resetPasswordSchema } from './auth.schemas.js';
+import { loginUserHandler, registerUserHandler, deleteUserHandler, promoteToCaptainHandler, forgotPasswordHandler, resetPasswordHandler } from './auth.controller.js';
 import { z } from 'zod';
 
 export async function authRoutes(app: FastifyInstance) {
-    app.withTypeProvider<ZodTypeProvider>().get('/users', {
-        onRequest: [async (request) => await request.jwtVerify()],
-        schema: {
-            tags: ['Auth'],
-            summary: 'Get all users',
-            security: [{ bearerAuth: [] }],
-            response: {
-                200: z.array(z.object({
-                    id: z.number(),
-                    nombres: z.string(),
-                    apellidos: z.string(),
-                    email: z.string(),
-                    rol: z.string()
-                }))
-            }
-        }
-    }, getUsersHandler);
-
     app.withTypeProvider<ZodTypeProvider>().post('/register', {
         schema: {
             tags: ['Auth'],
@@ -69,4 +51,54 @@ export async function authRoutes(app: FastifyInstance) {
             }
         }
     }, deleteUserHandler);
+
+    app.withTypeProvider<ZodTypeProvider>().post('/promote-captain', {
+        onRequest: [async (request) => await request.jwtVerify()],
+        schema: {
+            tags: ['Auth'],
+            summary: 'Promote user to Captain',
+            description: 'Cambia el rol del usuario autenticado de ESTUDIANTE a CAPITAN.',
+            security: [{ bearerAuth: [] }],
+            response: {
+                200: z.object({
+                    message: z.string(),
+                    user: z.object({
+                        id: z.number(),
+                        email: z.string(),
+                        rol: z.string()
+                    }),
+                    accessToken: z.string().describe('Nuevo token con rol actualizado')
+                }),
+                400: z.object({ message: z.string() }),
+                403: z.object({ message: z.string() })
+            }
+        }
+    }, promoteToCaptainHandler);
+
+    app.withTypeProvider<ZodTypeProvider>().post('/forgot-password', {
+        schema: {
+            tags: ['Auth'],
+            summary: 'Request password reset',
+            description: 'Solicita un token de recuperación de contraseña que se envía por email.',
+            body: forgotPasswordSchema,
+            response: {
+                200: z.object({ message: z.string() }),
+                500: z.object({ message: z.string() })
+            }
+        }
+    }, forgotPasswordHandler);
+
+    app.withTypeProvider<ZodTypeProvider>().post('/reset-password', {
+        schema: {
+            tags: ['Auth'],
+            summary: 'Reset password with token',
+            description: 'Resetea la contraseña usando un token válido de recuperación.',
+            body: resetPasswordSchema,
+            response: {
+                200: z.object({ message: z.string() }),
+                400: z.object({ message: z.string() }),
+                500: z.object({ message: z.string() })
+            }
+        }
+    }, resetPasswordHandler);
 }

@@ -1,18 +1,23 @@
 import { FastifyReply, FastifyRequest } from 'fastify';
+import { z } from 'zod';
+import { sendTournamentInscriptionEmail } from '../../services/email.service.js';
+import { createNotification } from '../../services/notification.service.js';
 import { prisma } from '../../utils/prisma.js';
 import { createEnrollmentSchema, updateEnrollmentStatusSchema } from './enrollments.schemas.js';
-import { z } from 'zod';
 
 export async function enrollTeamHandler(
     request: FastifyRequest<{ Body: z.infer<typeof createEnrollmentSchema> }>,
     reply: FastifyReply
 ) {
-    const { equipoId, torneoId } = request.body;
-    const user = request.user as { id: number, rol: string };
-
     try {
+        const { equipoId, torneoId } = request.body;
+        const user = request.user;
+
         // Validation: Verify if the user is the captain of the team provided
-        const team = await prisma.equipo.findUnique({ where: { id: equipoId } });
+        const team = await prisma.equipo.findUnique({
+            where: { id: equipoId },
+            include: { capitan: true }
+        });
 
         if (!team) {
             return reply.code(404).send({ message: 'Team not found' });
@@ -28,13 +33,30 @@ export async function enrollTeamHandler(
             return reply.code(404).send({ message: 'Tournament not found' });
         }
 
-        const enrollment = await prisma.equipoTorneo.create({
+        const enrollment = await prisma.equipotorneo.create({
             data: {
                 equipoId,
                 torneoId,
                 estado: 'INSCRITO'
             }
         });
+
+        // Send Email and Notification
+        if (team.capitan) {
+            const tournamentName = `${tournament.disciplina} ${tournament.categoria}`;
+
+            sendTournamentInscriptionEmail(
+                team.nombre,
+                tournamentName,
+                team.capitan.email
+            ).catch(console.error);
+
+            createNotification(
+                team.capitanId,
+                `Tu equipo "${team.nombre}" se ha inscrito en el torneo "${tournamentName}".`,
+                'INFO'
+            ).catch(console.error);
+        }
 
         return reply.code(201).send(enrollment);
     } catch (e: any) {
@@ -55,7 +77,7 @@ export async function updateEnrollmentStatusHandler(
     // Middleware already verifies ADMIN role for this route
 
     try {
-        const enrollment = await prisma.equipoTorneo.update({
+        const enrollment = await prisma.equipotorneo.update({
             where: { id: Number(id) },
             data: { estado }
         });
@@ -75,7 +97,7 @@ export async function getEnrollmentsHandler(
     if (torneoId) whereClause.torneoId = Number(torneoId);
     if (equipoId) whereClause.equipoId = Number(equipoId);
 
-    const enrollments = await prisma.equipoTorneo.findMany({
+    const enrollments = await prisma.equipotorneo.findMany({
         where: whereClause,
         include: {
             equipo: { select: { nombre: true } },
