@@ -33,7 +33,7 @@ interface StandingsTableProps {
 }
 
 export function StandingsTable({ tournaments }: StandingsTableProps) {
-    const [selectedTournamentId, setSelectedTournamentId] = useState<string>('');
+    const [selectedTournamentId, setSelectedTournamentId] = useState<number | null>(null);
     const [standings, setStandings] = useState<TournamentStandings | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
@@ -48,7 +48,7 @@ export function StandingsTable({ tournaments }: StandingsTableProps) {
     // Load standings when tournament changes
     useEffect(() => {
         if (selectedTournamentId) {
-            loadStandings(parseInt(selectedTournamentId));
+            loadStandings(selectedTournamentId);
         }
     }, [selectedTournamentId]);
 
@@ -185,9 +185,9 @@ export function StandingsTable({ tournaments }: StandingsTableProps) {
             <FormControl fullWidth sx={{ mb: 3, maxWidth: 400 }}>
                 <InputLabel>Seleccionar Torneo</InputLabel>
                 <Select
-                    value={selectedTournamentId}
+                    value={selectedTournamentId?.toString() || ''}
                     label="Seleccionar Torneo"
-                    onChange={(e) => setSelectedTournamentId(e.target.value)}
+                    onChange={(e) => setSelectedTournamentId(e.target.value ? parseInt(e.target.value) : null)}
                 >
                     {tournaments.map((tournament) => (
                         <MenuItem key={tournament.id} value={tournament.id}>

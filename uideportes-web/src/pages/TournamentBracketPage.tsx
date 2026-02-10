@@ -66,7 +66,7 @@ export const TournamentBracketPage = () => {
                 try {
                     const partidos = await matchesService.getByTournament(foundTournament.id);
                     matchups = partidos.map(p => ({
-                        id: p.id.toString(),
+                        id: p.id,
                         team1: p.equipoLocal?.nombre || 'Por definir',
                         team2: p.equipoVisitante?.nombre || 'Por definir',
                         equipoLocal: p.equipoLocal as any,

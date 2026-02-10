@@ -47,7 +47,7 @@ export function CreateTournamentModal({ isOpen, onClose, teams, onCreateTourname
     const [categoria, setCategoria] = useState('');
     const [genero, setGenero] = useState('');
     const [image, setImage] = useState('');
-    const [selectedTeams, setSelectedTeams] = useState<string[]>([]);
+    const [selectedTeams, setSelectedTeams] = useState<number[]>([]);
     const [costoInscripcion, setCostoInscripcion] = useState(0);
 
     useEffect(() => {
@@ -64,7 +64,7 @@ export function CreateTournamentModal({ isOpen, onClose, teams, onCreateTourname
             const teamIds = teams
                 .filter(t => (tournamentToEdit.teams || []).includes(t.name || t.nombre))
                 .map(t => t.id);
-            setSelectedTeams(teamIds || []);
+            setSelectedTeams(teamIds);
         } else {
             // Reset form
             setChampionshipName('');
@@ -80,7 +80,7 @@ export function CreateTournamentModal({ isOpen, onClose, teams, onCreateTourname
         }
     }, [tournamentToEdit, isOpen]);
 
-    const handleToggleTeam = (teamId: string) => {
+    const handleToggleTeam = (teamId: number) => {
         if (selectedTeams.includes(teamId)) {
             setSelectedTeams(selectedTeams.filter(t => t !== teamId));
         } else {

@@ -35,7 +35,7 @@ export function MatchesSection({ matchups, tournaments, onEditResult }: MatchesS
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('md'));
     const [filter, setFilter] = useState<'all' | 'upcoming' | 'played'>('all');
-    const [selectedTournamentId, setSelectedTournamentId] = useState<string>('');
+    const [selectedTournamentId, setSelectedTournamentId] = useState<number | null>(null);
 
     // Auto-select first tournament if available
     useEffect(() => {
@@ -55,7 +55,7 @@ export function MatchesSection({ matchups, tournaments, onEditResult }: MatchesS
 
     // Filter by tournament first
     const tournamentMatches = selectedTournamentId 
-        ? matchups.filter(m => m.torneoId === parseInt(selectedTournamentId))
+        ? matchups.filter(m => m.torneoId === selectedTournamentId)
         : [];
 
     const playedMatches = tournamentMatches.filter(m => m.result?.played);
@@ -88,9 +88,9 @@ export function MatchesSection({ matchups, tournaments, onEditResult }: MatchesS
                     <FormControl size="small" sx={{ minWidth: 250 }}>
                         <InputLabel>Seleccionar Torneo</InputLabel>
                         <Select
-                            value={selectedTournamentId}
+                            value={selectedTournamentId?.toString() || ''}
                             label="Seleccionar Torneo"
-                            onChange={(e) => setSelectedTournamentId(e.target.value)}
+                            onChange={(e) => setSelectedTournamentId(e.target.value ? parseInt(e.target.value) : null)}
                         >
                             {tournaments.length === 0 && (
                                 <MenuItem value="" disabled>No hay torneos</MenuItem>

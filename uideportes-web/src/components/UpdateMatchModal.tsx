@@ -8,8 +8,7 @@ import {
     TextField,
     MenuItem,
     Box,
-    Typography,
-    Stack
+    Typography
 } from '@mui/material';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
