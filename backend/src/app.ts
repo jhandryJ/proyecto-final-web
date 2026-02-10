@@ -25,6 +25,7 @@ import fastifyStatic from '@fastify/static';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { prisma } from './utils/prisma.js'; // Import Prisma
+import { seedFacultiesIfNeeded } from './utils/seed-faculties.js';
 
 // ... (imports)
 
@@ -137,6 +138,9 @@ const start = async () => {
         displayBanner();
         // Wait for Fastify to be ready
         await app.ready();
+
+        // Auto-seed faculties and careers if needed
+        await seedFacultiesIfNeeded();
 
         // Start listening
         await app.listen({ port: 3000, host: '0.0.0.0' });

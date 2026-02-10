@@ -11,7 +11,7 @@ export async function matchRoutes(app: FastifyInstance) {
     app.withTypeProvider<ZodTypeProvider>().get('/torneos/:torneoId/partidos', {
         schema: {
             tags: ['Partidos'],
-            summary: 'List matches for a tournament',
+            summary: 'Listar partidos de un torneo',
             params: z.object({ torneoId: z.string() }),
             response: {
                 200: z.array(matchResponseSchema)
@@ -25,33 +25,33 @@ export async function matchRoutes(app: FastifyInstance) {
             await request.jwtVerify();
         });
 
-        // Update Result - Admin or maybe Arbiter (if we had Arbiter Role)
-        // For now Admin Only
+        // Actualizar Resultado - Admin o tal vez Árbitro (si tuviéramos Rol de Árbitro)
+        // Por ahora solo Admin
         privateApp.register(async (adminApp) => {
             adminApp.addHook('preHandler', verifyRole(['ADMIN']));
 
             adminApp.withTypeProvider<ZodTypeProvider>().patch('/partidos/:id/resultado', {
                 schema: {
                     tags: ['Partidos'],
-                    summary: 'Update match score and status',
+                    summary: 'Actualizar marcador y estado del partido',
                     security: [{ bearerAuth: [] }],
                     params: z.object({ id: z.string() }),
                     body: updateMatchResultSchema,
                     response: {
-                        200: z.any() // Returns the full updated match object, can refine schema if needed
+                        200: z.any() // Retorna el objeto de partido actualizado completo, se puede refinar el schema si es necesario
                     }
                 }
             }, updateMatchResultHandler);
         });
 
-        // Get Next Match (Private, for User Dashboard)
+        // Obtener Próximo Partido (Privado, para Dashboard de Usuario)
         privateApp.withTypeProvider<ZodTypeProvider>().get('/next-match', {
             schema: {
                 tags: ['Partidos'],
-                summary: 'Get next upcoming match for logged in user',
+                summary: 'Obtener próximo partido del usuario autenticado',
                 security: [{ bearerAuth: [] }],
                 response: {
-                    200: z.nullable(z.any()) // Returns match object or null
+                    200: z.nullable(z.any()) // Retorna objeto de partido o null
                 }
             }
         }, getNextMatchHandler);

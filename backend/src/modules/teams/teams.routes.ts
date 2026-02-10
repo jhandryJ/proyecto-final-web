@@ -16,7 +16,7 @@ export async function teamRoutes(app: FastifyInstance) {
         privateApp.withTypeProvider<ZodTypeProvider>().get('/', {
             schema: {
                 tags: ['Equipos'],
-                summary: 'List all teams (with RLS)',
+                summary: 'Listar todos los equipos (con RLS)',
                 security: [{ bearerAuth: [] }],
                 response: {
                     200: z.array(teamResponseSchema)
@@ -28,7 +28,7 @@ export async function teamRoutes(app: FastifyInstance) {
         privateApp.withTypeProvider<ZodTypeProvider>().get('/:id', {
             schema: {
                 tags: ['Equipos'],
-                summary: 'Get team details (with RLS)',
+                summary: 'Obtener detalles del equipo (con RLS)',
                 security: [{ bearerAuth: [] }],
                 params: z.object({ id: z.string() }),
                 response: {
@@ -49,7 +49,7 @@ export async function teamRoutes(app: FastifyInstance) {
         privateApp.withTypeProvider<ZodTypeProvider>().post('/', {
             schema: {
                 tags: ['Equipos'],
-                summary: 'Create a new team',
+                summary: 'Crear un nuevo equipo',
                 security: [{ bearerAuth: [] }],
                 body: createTeamSchema,
                 response: {
@@ -62,7 +62,7 @@ export async function teamRoutes(app: FastifyInstance) {
         privateApp.withTypeProvider<ZodTypeProvider>().put('/:id', {
             schema: {
                 tags: ['Equipos'],
-                summary: 'Update team details',
+                summary: 'Actualizar detalles del equipo',
                 security: [{ bearerAuth: [] }],
                 params: z.object({ id: z.string() }),
                 body: updateTeamSchema,
@@ -77,7 +77,7 @@ export async function teamRoutes(app: FastifyInstance) {
         privateApp.withTypeProvider<ZodTypeProvider>().get('/mis-equipos', {
             schema: {
                 tags: ['Equipos'],
-                summary: 'Get current user teams',
+                summary: 'Obtener equipos del usuario actual',
                 security: [{ bearerAuth: [] }],
                 response: {
                     200: z.array(teamResponseSchema)
@@ -89,7 +89,7 @@ export async function teamRoutes(app: FastifyInstance) {
         privateApp.withTypeProvider<ZodTypeProvider>().get('/disponibles', {
             schema: {
                 tags: ['Equipos'],
-                summary: 'Get available teams (not in tournament)',
+                summary: 'Obtener equipos disponibles (no en torneo)',
                 security: [{ bearerAuth: [] }],
                 response: {
                     200: z.array(teamResponseSchema)
@@ -101,7 +101,7 @@ export async function teamRoutes(app: FastifyInstance) {
         privateApp.withTypeProvider<ZodTypeProvider>().post('/:id/join', {
             schema: {
                 tags: ['Equipos'],
-                summary: 'Join a team',
+                summary: 'Unirse a un equipo',
                 security: [{ bearerAuth: [] }],
                 params: z.object({ id: z.string() }),
                 response: {
@@ -114,7 +114,7 @@ export async function teamRoutes(app: FastifyInstance) {
         privateApp.withTypeProvider<ZodTypeProvider>().delete('/:id', {
             schema: {
                 tags: ['Equipos'],
-                summary: 'Delete a team',
+                summary: 'Eliminar un equipo',
                 security: [{ bearerAuth: [] }],
                 params: z.object({ id: z.string() }),
                 response: {
@@ -127,7 +127,7 @@ export async function teamRoutes(app: FastifyInstance) {
         privateApp.withTypeProvider<ZodTypeProvider>().post('/:id/leave', {
             schema: {
                 tags: ['Equipos'],
-                summary: 'Leave a team',
+                summary: 'Salir de un equipo',
                 security: [{ bearerAuth: [] }],
                 params: z.object({ id: z.string() }),
                 response: {

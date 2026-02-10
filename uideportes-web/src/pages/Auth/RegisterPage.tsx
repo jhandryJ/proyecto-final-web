@@ -5,7 +5,6 @@ import {
     TextField,
     Button,
     Paper,
-    Divider,
     Stack,
     InputAdornment,
     CircularProgress,
@@ -17,7 +16,6 @@ import {
     MenuItem
 } from '@mui/material';
 import {
-    Google,
     Email,
     Lock,
     ArrowBack,
@@ -396,35 +394,6 @@ export function RegisterPage() {
                             </Box>
                         </Stack>
                     </form>
-
-                    <Box sx={{ mt: 2, mb: 2, display: 'flex', alignItems: 'center' }}> {/* Reducido mt:3, mb:3 */}
-                        <Divider sx={{ flex: 1 }} />
-                        <Typography variant="caption" sx={{ mx: 2, fontWeight: 'bold', color: '#555' }}>
-                            o regístrate con
-                        </Typography>
-                        <Divider sx={{ flex: 1 }} />
-                    </Box>
-
-                    <Button
-                        fullWidth
-                        variant="contained"
-                        startIcon={<Google />}
-                        sx={{
-                            bgcolor: '#e0e0e0',
-                            color: '#333',
-                            textTransform: 'none',
-                            borderRadius: 50,
-                            py: 1.5,
-                            fontWeight: 500,
-                            boxShadow: 'none',
-                            '&:hover': {
-                                bgcolor: '#d5d5d5',
-                                boxShadow: 'none'
-                            }
-                        }}
-                    >
-                        Google
-                    </Button>
                 </Paper>
             </Box>
         </Box>

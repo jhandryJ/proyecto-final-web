@@ -8,7 +8,7 @@ export async function authRoutes(app: FastifyInstance) {
     app.withTypeProvider<ZodTypeProvider>().post('/register', {
         schema: {
             tags: ['Auth'],
-            summary: 'Register a new user',
+            summary: 'Registrar un nuevo usuario',
             body: registerUserSchema,
             response: {
                 201: z.object({
@@ -25,7 +25,7 @@ export async function authRoutes(app: FastifyInstance) {
     app.withTypeProvider<ZodTypeProvider>().post('/login', {
         schema: {
             tags: ['Auth'],
-            summary: 'User Login',
+            summary: 'Inicio de sesión de usuario',
             body: loginUserSchema,
             response: {
                 200: loginResponseSchema,
@@ -38,14 +38,14 @@ export async function authRoutes(app: FastifyInstance) {
         onRequest: [async (request) => await request.jwtVerify()],
         schema: {
             tags: ['Auth'], // Or 'Users' if I update app.ts, but 'Auth' requested implies context
-            summary: 'Delete a user (Admin only)',
+            summary: 'Eliminar un usuario (Solo Admin)',
             description: 'Elimina un usuario por su ID. Requiere ser ADMIN.',
             params: z.object({
-                id: z.string().describe('User ID')
+                id: z.string().describe('ID de Usuario')
             }),
             security: [{ bearerAuth: [] }],
             response: {
-                204: z.null().describe('User deleted successfully'),
+                204: z.null().describe('Usuario eliminado exitosamente'),
                 403: z.object({ message: z.string() }),
                 404: z.object({ message: z.string() })
             }
@@ -56,7 +56,7 @@ export async function authRoutes(app: FastifyInstance) {
         onRequest: [async (request) => await request.jwtVerify()],
         schema: {
             tags: ['Auth'],
-            summary: 'Promote user to Captain',
+            summary: 'Promover usuario a Capitán',
             description: 'Cambia el rol del usuario autenticado de ESTUDIANTE a CAPITAN.',
             security: [{ bearerAuth: [] }],
             response: {
@@ -78,7 +78,7 @@ export async function authRoutes(app: FastifyInstance) {
     app.withTypeProvider<ZodTypeProvider>().post('/forgot-password', {
         schema: {
             tags: ['Auth'],
-            summary: 'Request password reset',
+            summary: 'Solicitar restablecimiento de contraseña',
             description: 'Solicita un token de recuperación de contraseña que se envía por email.',
             body: forgotPasswordSchema,
             response: {
@@ -91,7 +91,7 @@ export async function authRoutes(app: FastifyInstance) {
     app.withTypeProvider<ZodTypeProvider>().post('/reset-password', {
         schema: {
             tags: ['Auth'],
-            summary: 'Reset password with token',
+            summary: 'Restablecer contraseña con token',
             description: 'Resetea la contraseña usando un token válido de recuperación.',
             body: resetPasswordSchema,
             response: {
