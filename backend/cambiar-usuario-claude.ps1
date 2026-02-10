@@ -5,7 +5,7 @@ param(
 )
 
 $configPath = "$env:APPDATA\Claude\claude_desktop_config.json"
-$backendPath = "C:\Users\Usuario\Desktop\UIDEportes-backend\backend"
+$backendPath = "C:\Users\HP\OneDrive\Escritorio\UIDE\4ciclo\Programación Web y Multimedia\proyecto-final-web\backend"
 $apiUrl = "http://localhost:3000"
 
 # Mapeo de usuarios a IDs (basado en la base de datos actual)
