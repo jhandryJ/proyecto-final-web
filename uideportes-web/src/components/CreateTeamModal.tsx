@@ -21,6 +21,7 @@ import {
     ListItemSecondaryAction,
 } from '@mui/material';
 import { Close as CloseIcon, PersonAdd as PersonAddIcon, Delete as DeleteIcon } from '@mui/icons-material';
+import { Genero, Disciplina } from '../types';
 import type { Team, Player, Carrera } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { usersService, type Usuario } from '../services/users.service';
@@ -38,6 +39,7 @@ export function CreateTeamModal({ isOpen, onClose, onCreateTeam, teamToEdit }: C
     const [name, setName] = useState('');
     const [facultad, setFacultad] = useState('');
     const [disciplina, setDisciplina] = useState('');
+    const [genero, setGenero] = useState<string>('MIXTO');
     const [logoUrl, setLogoUrl] = useState('');
     const [accessCode, setAccessCode] = useState('');
     const [captainId, setCaptainId] = useState<number | ''>('');
@@ -55,7 +57,7 @@ export function CreateTeamModal({ isOpen, onClose, onCreateTeam, teamToEdit }: C
                 const data = await resourcesService.getCareers();
                 setCarreras(data);
             } catch (error) {
-                console.error('Error fetching careers:', error);
+                console.error('Error al obtener carreras:', error);
             }
         };
         fetchCarreras();
@@ -64,9 +66,10 @@ export function CreateTeamModal({ isOpen, onClose, onCreateTeam, teamToEdit }: C
     useEffect(() => {
         if (isOpen) {
             if (teamToEdit) {
-                setName(teamToEdit.nombre || teamToEdit.name || '');
-                setFacultad(teamToEdit.facultad || teamToEdit.sport || '');
+                setName(teamToEdit.nombre || '');
+                setFacultad(teamToEdit.facultad || '');
                 setDisciplina(teamToEdit.disciplina as string || '');
+                setGenero((teamToEdit.genero as string) || 'MIXTO');
                 setLogoUrl(teamToEdit.logoUrl || '');
                 setAccessCode(teamToEdit.codigoAcceso || '');
                 setCaptainId(teamToEdit.capitanId || '');
@@ -79,6 +82,7 @@ export function CreateTeamModal({ isOpen, onClose, onCreateTeam, teamToEdit }: C
                 setName('');
                 setFacultad('');
                 setDisciplina('');
+                setGenero('MIXTO');
                 setLogoUrl('');
                 setAccessCode('');
                 setCaptainId('');
@@ -100,7 +104,7 @@ export function CreateTeamModal({ isOpen, onClose, onCreateTeam, teamToEdit }: C
             const usersData = await usersService.getAll();
             setUsers(usersData);
         } catch (err) {
-            console.error('Error loading users:', err);
+            console.error('Error al cargar usuarios:', err);
         } finally {
             setLoadingUsers(false);
         }
@@ -133,6 +137,7 @@ export function CreateTeamModal({ isOpen, onClose, onCreateTeam, teamToEdit }: C
                 nombre: name,
                 facultad,
                 disciplina,
+                genero,
                 logoUrl: logoUrl || undefined,
                 codigoAcceso: accessCode || undefined,
                 capitanId: captainId ? Number(captainId) : undefined,
@@ -196,6 +201,21 @@ export function CreateTeamModal({ isOpen, onClose, onCreateTeam, teamToEdit }: C
                                             {carrera.nombre}
                                         </MenuItem>
                                     ))}
+                                </Select>
+                            </FormControl>
+                        </Box>
+
+                        <Box>
+                            <FormControl fullWidth required>
+                                <InputLabel>Género</InputLabel>
+                                <Select
+                                    value={genero}
+                                    onChange={(e) => setGenero(e.target.value)}
+                                    label="Género"
+                                >
+                                    <MenuItem value="MASCULINO">Masculino</MenuItem>
+                                    <MenuItem value="FEMENINO">Femenino</MenuItem>
+                                    <MenuItem value="MIXTO">Mixto</MenuItem>
                                 </Select>
                             </FormControl>
                         </Box>

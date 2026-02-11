@@ -65,7 +65,23 @@ export async function getCanchasHandler(request: FastifyRequest, reply: FastifyR
 
 export async function getFacultiesHandler(request: FastifyRequest, reply: FastifyReply) {
     try {
-        const facultades = await prisma.facultad.findMany();
+        const facultades = await prisma.facultad.findMany({
+            include: {
+                carreras: {
+                    select: {
+                        id: true,
+                        nombre: true,
+                        facultadId: true
+                    },
+                    orderBy: {
+                        nombre: 'asc'
+                    }
+                }
+            },
+            orderBy: {
+                nombre: 'asc'
+            }
+        });
         return reply.status(200).send(facultades);
     } catch (error) {
         request.log.error(error);

@@ -84,7 +84,7 @@ export const TournamentBracketPage = () => {
                         torneoId: foundTournament.id
                     }));
                 } catch (e) {
-                    console.warn('Error fetching matches', e);
+                    console.warn('Error al obtener partidos', e);
                 }
 
                 // Parse groups logic
@@ -122,7 +122,7 @@ export const TournamentBracketPage = () => {
                 }
 
                 const mappedTournament: Tournament = {
-                    id: foundTournament.id.toString(),
+                    id: foundTournament.id,
                     campeonatoId: foundTournament.campeonatoId,
                     disciplina: foundTournament.disciplina,
                     categoria: foundTournament.categoria,
@@ -159,7 +159,7 @@ export const TournamentBracketPage = () => {
                 const data = await resourcesService.getAllCanchas();
                 setVenues(data);
             } catch (e) {
-                console.error('Error fetching venues', e);
+                console.error('Error al obtener canchas', e);
             }
         };
 
@@ -220,7 +220,7 @@ export const TournamentBracketPage = () => {
             // Refresh data
             window.location.reload();
         } catch (err: any) {
-            console.error('Error updating match', err);
+            console.error('Error al actualizar partido', err);
             alert('Error al actualizar el partido');
         }
     };

@@ -5,6 +5,7 @@ export const createTeamSchema = z.object({
     logoUrl: z.string().url().optional(),
     facultad: z.string().optional(),
     disciplina: z.enum(['FUTBOL', 'BASKET', 'ECUAVOLEY']).optional(),
+    genero: z.enum(['MASCULINO', 'FEMENINO', 'MIXTO']).optional(),
     capitanId: z.number().optional(), // Allow admins to specify captain
     codigoAcceso: z.string().optional(),
 });
@@ -17,6 +18,7 @@ export const teamResponseSchema = z.object({
     logoUrl: z.string().nullable(),
     facultad: z.string().nullable(),
     disciplina: z.string().nullable(),
+    genero: z.string().nullable(),
     capitanId: z.number(),
     capitan: z.object({
         id: z.number(),

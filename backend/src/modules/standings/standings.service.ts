@@ -24,7 +24,7 @@ export interface TournamentStandings {
 }
 
 /**
- * Calculate standings for a tournament
+ * Calcula la tabla de posiciones para un torneo
  */
 export async function calculateTournamentStandings(torneoId: number): Promise<TournamentStandings> {
     // Get tournament info
@@ -166,7 +166,7 @@ export async function calculateTournamentStandings(torneoId: number): Promise<To
 }
 
 /**
- * Calculate stats for a specific team in a tournament
+ * Calcula las estadísticas para un equipo específico en un torneo
  */
 export async function calculateTeamStats(equipoId: number, torneoId: number): Promise<TeamStanding | null> {
     const standings = await calculateTournamentStandings(torneoId);

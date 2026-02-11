@@ -23,20 +23,26 @@ import {
     InputLabel,
     Grid,
     CircularProgress,
-    Alert
+    Alert,
+    Tabs,
+    Tab
 } from '@mui/material';
 import {
     CheckCircle as CheckIcon,
     Cancel as RejectIcon,
     Visibility as ViewIcon,
-    AttachMoney as MoneyIcon,
     DateRange as DateIcon,
     Person as PersonIcon,
     Groups as GroupIcon,
-    Refresh as RefreshIcon
+    Refresh as RefreshIcon,
+    History as HistoryIcon,
+    PendingActions as PendingIcon,
+    MonetizationOn as PaidIcon,
+    Close as CloseIcon
 } from '@mui/icons-material';
 import { paymentsService } from '../services/payments.service';
 import { EstadoPago, type ValidacionPago } from '../types';
+import { API_CONFIG } from '../config/api';
 
 interface PaymentValidationProps {
     onSuccess?: () => void;
@@ -48,6 +54,7 @@ export function PaymentValidation({ onSuccess }: PaymentValidationProps) {
     const [error, setError] = useState('');
     const [reviewModalOpen, setReviewModalOpen] = useState(false);
     const [selectedPayment, setSelectedPayment] = useState<ValidacionPago | null>(null);
+    const [tabValue, setTabValue] = useState(0);
 
     // Review State
     const [reviewEstado, setReviewEstado] = useState<string>('');
@@ -61,15 +68,20 @@ export function PaymentValidation({ onSuccess }: PaymentValidationProps) {
     const loadPayments = async () => {
         setLoading(true);
         try {
-            const data = await paymentsService.getPending();
+            // Fetch ALL payments to calculate totals and show history
+            const data = await paymentsService.getAll();
             setPayments(data);
             setError('');
         } catch (err) {
-            console.error('Error loading payments:', err);
-            setError('Error al cargar los pagos pendientes. Por favor intente nuevamente.');
+            console.error('Error al cargar pagos:', err);
+            setError('Error al cargar los pagos. Por favor intente nuevamente.');
         } finally {
             setLoading(false);
         }
+    };
+
+    const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
+        setTabValue(newValue);
     };
 
     const handleOpenReview = (payment: ValidacionPago) => {
@@ -89,27 +101,57 @@ export function PaymentValidation({ onSuccess }: PaymentValidationProps) {
 
         setProcessingReview(true);
         try {
-            await paymentsService.validate(selectedPayment.id, {
+            const updatedPayment = await paymentsService.validate(selectedPayment.id, {
                 estado: reviewEstado as typeof EstadoPago[keyof typeof EstadoPago],
                 observacion: reviewObservacion || undefined,
             });
 
-            // Update local state
-            setPayments(prev => prev.filter(p => p.id !== selectedPayment.id));
+            // Update local state: replace the processed payment with the updated one
+            setPayments(prev => prev.map(p => p.id === selectedPayment.id ? updatedPayment : p));
 
             handleCloseReview();
             if (onSuccess) onSuccess();
 
-            // Optional: Show success snackbar
         } catch (err: any) {
-            console.error('Error validating payment:', err);
+            console.error('Error al validar pago:', err);
             alert(err.response?.data?.message || 'Error al procesar la validación');
         } finally {
             setProcessingReview(false);
         }
     };
 
-    const totalAmount = payments.reduce((sum, p) => sum + Number(p.monto), 0);
+    // Derived State
+    const pendingPayments = payments.filter(p => p.estado === EstadoPago.PENDIENTE);
+    const historyPayments = payments.filter(p => p.estado !== EstadoPago.PENDIENTE);
+
+    // Calculate Total Approved Amount
+    const totalApproved = payments
+        .filter(p => p.estado === EstadoPago.VALIDADO)
+        .reduce((sum, p) => sum + Number(p.monto), 0);
+
+    const getStatusChip = (estado: string) => {
+        let color: "warning" | "success" | "error" | "default" = "default";
+
+        switch (estado) {
+            case EstadoPago.PENDIENTE: color = "warning"; break;
+            case EstadoPago.VALIDADO: color = "success"; break;
+            case EstadoPago.RECHAZADO: color = "error"; break;
+        }
+
+        return <Chip label={estado} size="small" color={color} sx={{ fontWeight: 700, borderRadius: 1.5 }} />;
+    };
+
+    const getImageUrl = (url: string) => {
+        if (!url) return '';
+        if (url.startsWith('http')) return url;
+
+        // Remove /api from end of BASE_URL to get the root URL where static files are served
+        const baseUrl = API_CONFIG.BASE_URL.endsWith('/api')
+            ? API_CONFIG.BASE_URL.slice(0, -4)
+            : API_CONFIG.BASE_URL;
+
+        return `${baseUrl}${url}`;
+    };
 
     return (
         <Box sx={{ pb: 4 }}>
@@ -120,7 +162,7 @@ export function PaymentValidation({ onSuccess }: PaymentValidationProps) {
                         Gestión de Pagos
                     </Typography>
                     <Typography variant="body1" color="text.secondary">
-                        Valida y gestiona los comprobantes de pago de los equipos.
+                        Panel administrativo de pagos y validaciones.
                     </Typography>
                 </Box>
                 <Button
@@ -145,14 +187,34 @@ export function PaymentValidation({ onSuccess }: PaymentValidationProps) {
                     }}>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
                             <Box sx={{ p: 1, bgcolor: 'rgba(255,255,255,0.1)', borderRadius: 2 }}>
-                                <VisibilityIcon sx={{ color: '#EDB112' }} />
+                                <PendingIcon sx={{ color: '#EDB112' }} />
                             </Box>
                             <Typography variant="subtitle2" sx={{ fontWeight: 700, opacity: 0.8 }}>PENDIENTES</Typography>
                         </Box>
-                        <Typography variant="h3" sx={{ fontWeight: 800 }}>{payments.length}</Typography>
+                        <Typography variant="h3" sx={{ fontWeight: 800 }}>{pendingPayments.length}</Typography>
                         <Typography variant="caption" sx={{ opacity: 0.7 }}>Solicitudes por revisar</Typography>
                     </Paper>
                 </Grid>
+
+                <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+                    <Paper sx={{
+                        p: 3,
+                        borderRadius: 3,
+                        bgcolor: 'white',
+                        border: '1px solid #E2E8F0',
+                        boxShadow: '0 4px 6px rgba(0,0,0,0.02)'
+                    }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+                            <Box sx={{ p: 1, bgcolor: '#ECFDF5', borderRadius: 2 }}>
+                                <PaidIcon sx={{ color: '#059669' }} />
+                            </Box>
+                            <Typography variant="subtitle2" sx={{ fontWeight: 700, color: '#64748B' }}>TOTAL APROBADO</Typography>
+                        </Box>
+                        <Typography variant="h3" sx={{ fontWeight: 800, color: '#059669' }}>${totalApproved.toFixed(2)}</Typography>
+                        <Typography variant="caption" sx={{ color: '#64748B' }}>Ingresos validados</Typography>
+                    </Paper>
+                </Grid>
+
                 <Grid size={{ xs: 12, sm: 6, md: 4 }}>
                     <Paper sx={{
                         p: 3,
@@ -163,12 +225,12 @@ export function PaymentValidation({ onSuccess }: PaymentValidationProps) {
                     }}>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
                             <Box sx={{ p: 1, bgcolor: '#F0F9FF', borderRadius: 2 }}>
-                                <MoneyIcon sx={{ color: '#0284C7' }} />
+                                <HistoryIcon sx={{ color: '#0284C7' }} />
                             </Box>
-                            <Typography variant="subtitle2" sx={{ fontWeight: 700, color: '#64748B' }}>MONTO TOTAL</Typography>
+                            <Typography variant="subtitle2" sx={{ fontWeight: 700, color: '#64748B' }}>HISTORIAL</Typography>
                         </Box>
-                        <Typography variant="h3" sx={{ fontWeight: 800, color: '#0F172A' }}>${totalAmount.toFixed(2)}</Typography>
-                        <Typography variant="caption" sx={{ color: '#64748B' }}>En espera de aprobación</Typography>
+                        <Typography variant="h3" sx={{ fontWeight: 800, color: '#0F172A' }}>{historyPayments.length}</Typography>
+                        <Typography variant="caption" sx={{ color: '#64748B' }}>Pagos procesados</Typography>
                     </Paper>
                 </Grid>
             </Grid>
@@ -180,20 +242,21 @@ export function PaymentValidation({ onSuccess }: PaymentValidationProps) {
                 border: '1px solid #E2E8F0',
                 boxShadow: '0 4px 6px rgba(0,0,0,0.02)'
             }}>
+                <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
+                    <Tabs value={tabValue} onChange={handleTabChange} aria-label="payment tabs">
+                        <Tab label={`Pendientes (${pendingPayments.length})`} sx={{ fontWeight: 600 }} />
+                        <Tab label="Historial de Pagos" sx={{ fontWeight: 600 }} />
+                    </Tabs>
+                </Box>
+
                 {loading ? (
                     <Box sx={{ p: 5, textAlign: 'center' }}>
                         <CircularProgress size={40} sx={{ color: '#001F52' }} />
-                        <Typography sx={{ mt: 2, color: '#64748B' }}>Cargando pagos...</Typography>
+                        <Typography sx={{ mt: 2, color: '#64748B' }}>Cargando datos...</Typography>
                     </Box>
                 ) : error ? (
                     <Box sx={{ p: 4 }}>
                         <Alert severity="error">{error}</Alert>
-                    </Box>
-                ) : payments.length === 0 ? (
-                    <Box sx={{ p: 8, textAlign: 'center' }}>
-                        <CheckIcon sx={{ fontSize: 64, color: '#CBD5E1', mb: 2 }} />
-                        <Typography variant="h6" color="text.secondary" fontWeight="bold">¡Todo al día!</Typography>
-                        <Typography color="text.secondary">No hay pagos pendientes de revisión en este momento.</Typography>
                     </Box>
                 ) : (
                     <TableContainer>
@@ -209,7 +272,23 @@ export function PaymentValidation({ onSuccess }: PaymentValidationProps) {
                                 </TableRow>
                             </TableHead>
                             <TableBody>
-                                {payments.map((payment) => (
+                                {tabValue === 0 && pendingPayments.length === 0 && (
+                                    <TableRow>
+                                        <TableCell colSpan={6} align="center" sx={{ py: 8 }}>
+                                            <CheckIcon sx={{ fontSize: 48, color: '#CBD5E1', mb: 1 }} />
+                                            <Typography color="text.secondary">No hay pagos pendientes.</Typography>
+                                        </TableCell>
+                                    </TableRow>
+                                )}
+                                {tabValue === 1 && historyPayments.length === 0 && (
+                                    <TableRow>
+                                        <TableCell colSpan={6} align="center" sx={{ py: 8 }}>
+                                            <Typography color="text.secondary">Aún no hay historial de pagos.</Typography>
+                                        </TableCell>
+                                    </TableRow>
+                                )}
+
+                                {(tabValue === 0 ? pendingPayments : historyPayments).map((payment) => (
                                     <TableRow key={payment.id} hover sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
                                         <TableCell>
                                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
@@ -241,16 +320,11 @@ export function PaymentValidation({ onSuccess }: PaymentValidationProps) {
                                             </Typography>
                                         </TableCell>
                                         <TableCell align="center">
-                                            <Chip
-                                                label={payment.estado}
-                                                size="small"
-                                                color="warning"
-                                                sx={{ fontWeight: 700, borderRadius: 1.5 }}
-                                            />
+                                            {getStatusChip(payment.estado)}
                                         </TableCell>
                                         <TableCell align="right">
                                             <Button
-                                                variant="contained"
+                                                variant={tabValue === 0 ? "contained" : "outlined"}
                                                 size="small"
                                                 startIcon={<ViewIcon />}
                                                 onClick={() => handleOpenReview(payment)}
@@ -258,13 +332,9 @@ export function PaymentValidation({ onSuccess }: PaymentValidationProps) {
                                                     borderRadius: 1.5,
                                                     textTransform: 'none',
                                                     fontWeight: 600,
-                                                    boxShadow: 'none',
-                                                    bgcolor: '#EFF6FF',
-                                                    color: '#1D4ED8',
-                                                    '&:hover': { bgcolor: '#DBEAFE', boxShadow: 'none' }
                                                 }}
                                             >
-                                                Revisar
+                                                {tabValue === 0 ? 'Revisar' : 'Ver Detalle'}
                                             </Button>
                                         </TableCell>
                                     </TableRow>
@@ -298,7 +368,7 @@ export function PaymentValidation({ onSuccess }: PaymentValidationProps) {
                     }}>
                         {selectedPayment?.comprobanteUrl ? (
                             <img
-                                src={selectedPayment.comprobanteUrl}
+                                src={getImageUrl(selectedPayment.comprobanteUrl)}
                                 alt="Comprobante"
                                 style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
                             />
@@ -310,8 +380,8 @@ export function PaymentValidation({ onSuccess }: PaymentValidationProps) {
                     {/* Right: Action Panel */}
                     <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', borderLeft: '1px solid #E2E8F0' }}>
                         <DialogTitle sx={{ borderBottom: '1px solid #eeeeee', fontWeight: 800, color: '#0F172A', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            Validar Pago
-                            <IconButton onClick={handleCloseReview} size="small"><Box component={CheckIcon} sx={{ transform: 'rotate(45deg)', color: '#94A3B8' }} /></IconButton> {/* Using CheckIcon as close button placeholder or import CloseIcon properly if preferred, keeping simple */}
+                            {selectedPayment?.estado === EstadoPago.PENDIENTE ? 'Validar Pago' : 'Detalle del Pago'}
+                            <IconButton onClick={handleCloseReview} size="small"><CloseIcon sx={{ color: '#94A3B8' }} /></IconButton>
                         </DialogTitle>
 
                         <DialogContent sx={{ p: 3, flexGrow: 1, overflowY: 'auto' }}>
@@ -338,58 +408,75 @@ export function PaymentValidation({ onSuccess }: PaymentValidationProps) {
                             </Box>
 
                             <Box>
-                                <Typography variant="subtitle2" color="text.secondary" gutterBottom>DECISIÓN</Typography>
-                                <FormControl fullWidth sx={{ mb: 2 }}>
-                                    <InputLabel>Estado de la Validación</InputLabel>
-                                    <Select
-                                        value={reviewEstado}
-                                        label="Estado de la Validación"
-                                        onChange={(e) => setReviewEstado(e.target.value)}
-                                    >
-                                        <MenuItem value={EstadoPago.VALIDADO}>
-                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, color: '#16A34A' }}>
-                                                <CheckIcon fontSize="small" /> APROBAR PAGO
-                                            </Box>
-                                        </MenuItem>
-                                        <MenuItem value={EstadoPago.RECHAZADO}>
-                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, color: '#DC2626' }}>
-                                                <RejectIcon fontSize="small" /> RECHAZAR PAGO
-                                            </Box>
-                                        </MenuItem>
-                                    </Select>
-                                </FormControl>
+                                <Typography variant="subtitle2" color="text.secondary" gutterBottom>ESTADO</Typography>
 
-                                <TextField
-                                    label="Observaciones (Opcional)"
-                                    multiline
-                                    rows={4}
-                                    fullWidth
-                                    value={reviewObservacion}
-                                    onChange={(e) => setReviewObservacion(e.target.value)}
-                                    placeholder="Ingrese razón del rechazo o nota de aprobación..."
-                                />
+                                {selectedPayment?.estado === EstadoPago.PENDIENTE ? (
+                                    <>
+                                        <FormControl fullWidth sx={{ mb: 2 }}>
+                                            <InputLabel>Estado de la Validación</InputLabel>
+                                            <Select
+                                                value={reviewEstado}
+                                                label="Estado de la Validación"
+                                                onChange={(e) => setReviewEstado(e.target.value)}
+                                            >
+                                                <MenuItem value={EstadoPago.VALIDADO}>
+                                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, color: '#16A34A' }}>
+                                                        <CheckIcon fontSize="small" /> APROBAR PAGO
+                                                    </Box>
+                                                </MenuItem>
+                                                <MenuItem value={EstadoPago.RECHAZADO}>
+                                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, color: '#DC2626' }}>
+                                                        <RejectIcon fontSize="small" /> RECHAZAR PAGO
+                                                    </Box>
+                                                </MenuItem>
+                                            </Select>
+                                        </FormControl>
+
+                                        <TextField
+                                            label="Observaciones (Opcional)"
+                                            multiline
+                                            rows={4}
+                                            fullWidth
+                                            value={reviewObservacion}
+                                            onChange={(e) => setReviewObservacion(e.target.value)}
+                                            placeholder="Ingrese razón del rechazo o nota de aprobación..."
+                                        />
+                                    </>
+                                ) : (
+                                    <Box sx={{ p: 2, bgcolor: '#f8fafc', borderRadius: 2, border: '1px solid #e2e8f0' }}>
+                                        {getStatusChip(selectedPayment?.estado || '')}
+                                        {selectedPayment?.observacion && (
+                                            <Typography variant="body2" sx={{ mt: 1, color: '#475569', fontStyle: 'italic' }}>
+                                                "{selectedPayment.observacion}"
+                                            </Typography>
+                                        )}
+                                    </Box>
+                                )}
                             </Box>
                         </DialogContent>
 
                         <DialogActions sx={{ p: 3, borderTop: '1px solid #eeeeee' }}>
                             <Button onClick={handleCloseReview} sx={{ color: '#64748B', fontWeight: 600 }}>
-                                Cancelar
+                                {selectedPayment?.estado === EstadoPago.PENDIENTE ? 'Cancelar' : 'Cerrar'}
                             </Button>
-                            <Button
-                                variant="contained"
-                                color={reviewEstado === EstadoPago.RECHAZADO ? 'error' : 'primary'}
-                                onClick={handleSubmitReview}
-                                disabled={!reviewEstado || processingReview}
-                                sx={{
-                                    borderRadius: 1.5,
-                                    fontWeight: 700,
-                                    px: 4,
-                                    py: 1,
-                                    boxShadow: 'none'
-                                }}
-                            >
-                                {processingReview ? 'Procesando...' : 'Confirmar Decisión'}
-                            </Button>
+
+                            {selectedPayment?.estado === EstadoPago.PENDIENTE && (
+                                <Button
+                                    variant="contained"
+                                    color={reviewEstado === EstadoPago.RECHAZADO ? 'error' : 'primary'}
+                                    onClick={handleSubmitReview}
+                                    disabled={!reviewEstado || processingReview}
+                                    sx={{
+                                        borderRadius: 1.5,
+                                        fontWeight: 700,
+                                        px: 4,
+                                        py: 1,
+                                        boxShadow: 'none'
+                                    }}
+                                >
+                                    {processingReview ? 'Procesando...' : 'Confirmar Decisión'}
+                                </Button>
+                            )}
                         </DialogActions>
                     </Box>
                 </Box>
@@ -397,9 +484,3 @@ export function PaymentValidation({ onSuccess }: PaymentValidationProps) {
         </Box>
     );
 }
-
-// Helper icon component if ViewIcon was not imported correctly locally, but assumed from existing imports
-function VisibilityIcon(props: any) {
-    return <ViewIcon {...props} />;
-}
-

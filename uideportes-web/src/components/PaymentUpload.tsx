@@ -14,7 +14,14 @@ import {
     Tabs,
     Tab
 } from '@mui/material';
-import { Close as CloseIcon, CloudUpload as UploadIcon, CheckCircle as CheckIcon, ContentCopy } from '@mui/icons-material';
+import {
+    Close as CloseIcon,
+    CloudUpload as UploadIcon,
+    CheckCircle as CheckIcon,
+    ContentCopy,
+    QrCode2 as QrCodeIcon,
+    Link as LinkIcon
+} from '@mui/icons-material';
 import { paymentsService } from '../services/payments.service';
 import { apiClient } from '../services/api';
 
@@ -60,10 +67,10 @@ export function PaymentUpload({ isOpen, onClose, equipoId, torneoId, onSuccess }
                 setComprobanteUrl(response.data.url);
             }
         } catch (err: any) {
-            console.error('Error uploading file:', err);
+            console.error('Error al subir archivo:', err);
             if (err.response) {
-                console.log('Upload Error Status:', err.response.status);
-                console.log('Upload Error Data:', err.response.data);
+                console.log('Estado de Error de Subida:', err.response.status);
+                console.log('Datos de Error de Subida:', err.response.data);
             }
             setError(`Error al subir la imagen: ${err.response?.data?.message || err.message}`);
         } finally {
@@ -89,7 +96,7 @@ export function PaymentUpload({ isOpen, onClose, equipoId, torneoId, onSuccess }
             onSuccess();
             onClose();
         } catch (err: any) {
-            console.error('Error uploading payment:', err);
+            console.error('Error al subir pago:', err);
             setError(err.response?.data?.message || 'Error al subir el comprobante de pago');
         } finally {
             setLoading(false);
@@ -143,6 +150,39 @@ export function PaymentUpload({ isOpen, onClose, equipoId, torneoId, onSuccess }
                                     </IconButton>
                                 </Box>
                                 <Typography variant="body2">Email: dannyjaramillofran1@gmail.com</Typography>
+
+                                <Box sx={{ mt: 2, pt: 2, borderTop: '1px dashed #bdbdbd', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+
+                                    <Box
+                                        onClick={() => setViewImage('/assets/qr-banco-loja.png')}
+                                        sx={{
+                                            cursor: 'pointer',
+                                            border: '1px solid #ddd',
+                                            borderRadius: 2,
+                                            p: 1,
+                                            bgcolor: 'white',
+                                            '&:hover': { boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }
+                                        }}
+                                    >
+                                        <img
+                                            src="/assets/qr-banco-loja.png"
+                                            alt="QR Banco de Loja"
+                                            style={{ width: 180, height: 180, objectFit: 'contain', display: 'block' }}
+                                        />
+                                    </Box>
+                                    <Typography variant="caption" color="text.secondary">Click para ampliar</Typography>
+
+                                    <Button
+                                        variant="outlined"
+                                        size="small"
+                                        startIcon={<LinkIcon />}
+                                        href="https://bancodeloja.fin.ec"
+                                        target="_blank"
+                                        fullWidth
+                                    >
+                                        Ir a Banca Virtual
+                                    </Button>
+                                </Box>
                             </Box>
                         )}
 
@@ -163,6 +203,39 @@ export function PaymentUpload({ isOpen, onClose, equipoId, torneoId, onSuccess }
                                     </IconButton>
                                 </Box>
                                 <Typography variant="body2">Email: dannyjaramillofran1@gmail.com</Typography>
+
+                                <Box sx={{ mt: 2, pt: 2, borderTop: '1px dashed #bdbdbd', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+
+                                    <Box
+                                        onClick={() => setViewImage('/assets/qr-banco-pichincha.png')}
+                                        sx={{
+                                            cursor: 'pointer',
+                                            border: '1px solid #ddd',
+                                            borderRadius: 2,
+                                            p: 1,
+                                            bgcolor: 'white',
+                                            '&:hover': { boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }
+                                        }}
+                                    >
+                                        <img
+                                            src="/assets/qr-banco-pichincha.png"
+                                            alt="QR Banco Pichincha"
+                                            style={{ width: 180, height: 180, objectFit: 'contain', display: 'block' }}
+                                        />
+                                    </Box>
+                                    <Typography variant="caption" color="text.secondary">Click para ampliar</Typography>
+
+                                    <Button
+                                        variant="outlined"
+                                        size="small"
+                                        startIcon={<LinkIcon />}
+                                        href="https://www.pichincha.com"
+                                        target="_blank"
+                                        fullWidth
+                                    >
+                                        Ir a Banca Virtual
+                                    </Button>
+                                </Box>
                             </Box>
                         )}
 

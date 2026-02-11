@@ -1,8 +1,6 @@
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../utils/prisma.js';
 import { generateVerificationCode, getExpirationDate, isCodeExpired } from '../utils/verification-code.js';
 import { sendVerificationCode } from './email.service.js';
-
-const prisma = new PrismaClient();
 
 /**
  * Crea y envía un código de verificación al usuario

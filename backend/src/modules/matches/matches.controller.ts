@@ -55,10 +55,8 @@ export async function updateMatchResultHandler(
         });
 
         // 2. Advance winner if Bracket and Finalized
-        // 2. Advance winner if Bracket and Finalized
-        // TODO: Remove 'as any' once prisma generate runs successfully to update types
-        const siguientePartidoId = (partido as any).siguientePartidoId as number | null;
-        const siguienteSlot = (partido as any).siguienteSlot as string | null;
+        const siguientePartidoId = partido.siguientePartidoId;
+        const siguienteSlot = partido.siguienteSlot;
 
         if (partido.estado === 'FINALIZADO' && siguientePartidoId && siguienteSlot) {
             let winnerId: number | null = null;
@@ -87,6 +85,24 @@ export async function updateMatchResultHandler(
 
                 request.log.info(`Advanced winner ${winnerId} to match ${siguientePartidoId} as ${siguienteSlot}`);
             }
+        }
+
+        // 3. Notifications
+        const { createNotification } = await import('../../services/notification.service.js');
+        const matchTitle = `${partido.equipoLocal?.nombre} vs ${partido.equipoVisitante?.nombre}`;
+
+        // Notify Scheduling
+        if (fechaHora) {
+            const msg = `Tu partido ${matchTitle} ha sido programado para ${new Date(fechaHora).toLocaleString()}.`;
+            if (partido.equipoLocal?.capitanId) createNotification(partido.equipoLocal.capitanId, msg, 'INFO');
+            if (partido.equipoVisitante?.capitanId) createNotification(partido.equipoVisitante.capitanId, msg, 'INFO');
+        }
+
+        // Notify Result
+        if (marcadorLocal !== undefined && marcadorVisitante !== undefined) {
+            const msg = `Se ha registrado el resultado del partido ${matchTitle}: ${marcadorLocal} - ${marcadorVisitante}.`;
+            if (partido.equipoLocal?.capitanId) createNotification(partido.equipoLocal.capitanId, msg, 'INFO');
+            if (partido.equipoVisitante?.capitanId) createNotification(partido.equipoVisitante.capitanId, msg, 'INFO');
         }
 
         return reply.status(200).send(partido);

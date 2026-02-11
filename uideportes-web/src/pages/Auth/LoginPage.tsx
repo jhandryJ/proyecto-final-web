@@ -49,7 +49,7 @@ export const LoginPage = () => {
                 navigate('/user-dashboard');
             }
         } catch (err: any) {
-            console.error('Login error:', err);
+            console.error('Error de inicio de sesión:', err);
             setError(err.response?.data?.message || 'Credenciales inválidas. Por favor intente nuevamente.');
         } finally {
             setIsLoading(false);

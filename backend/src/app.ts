@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import Fastify, { FastifyError } from 'fastify';
 import cors from '@fastify/cors';
 import swagger from '@fastify/swagger';
@@ -25,6 +26,7 @@ import fastifyStatic from '@fastify/static';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { prisma } from './utils/prisma.js'; // Import Prisma
+import { seedFacultiesIfNeeded } from './utils/seed-faculties.js';
 
 // ... (imports)
 
@@ -138,6 +140,9 @@ const start = async () => {
         // Wait for Fastify to be ready
         await app.ready();
 
+        // Auto-seed faculties and careers if needed
+        await seedFacultiesIfNeeded();
+
         // Start listening
         await app.listen({ port: 3000, host: '0.0.0.0' });
         console.log('Server running on http://localhost:3000');
@@ -176,7 +181,7 @@ const start = async () => {
                             });
                         }
                     } catch (e) {
-                        console.error('Error checking ban on join:', e);
+                        console.error('Error al verificar baneo al unirse:', e);
                     }
                 }
 
@@ -214,7 +219,7 @@ const start = async () => {
                         }
 
                     } catch (e) {
-                        console.error('Error checking user status:', e);
+                        console.error('Error al verificar estado de usuario:', e);
                     }
                 }
 
@@ -244,7 +249,7 @@ const start = async () => {
                             }
                         });
                     } catch (e) {
-                        console.error('Error saving chat message to DB:', e);
+                        console.error('Error al guardar mensaje de chat en BD:', e);
                     }
                 }
             });
@@ -282,7 +287,7 @@ const start = async () => {
                 console.log(`[BAN ATTEMPT] Admin: ${adminId}, Target: ${targetUserId}, Duration: ${durationMinutes}, Reason: ${reason}`);
 
                 if (!adminId || !targetUserId) {
-                    console.error('[BAN ERROR] Missing adminId or targetUserId');
+                    console.error('[BAN ERROR] Falta adminId o targetUserId');
                     return;
                 }
 
@@ -290,7 +295,7 @@ const start = async () => {
                 const targetIdInt = parseInt(targetUserId as string);
 
                 if (isNaN(adminIdInt) || isNaN(targetIdInt)) {
-                    console.error(`[BAN ERROR] Invalid IDs. Admin: ${adminId} -> ${adminIdInt}, Target: ${targetUserId} -> ${targetIdInt}`);
+                    console.error(`[BAN ERROR] IDs inválidos. Admin: ${adminId} -> ${adminIdInt}, Target: ${targetUserId} -> ${targetIdInt}`);
                     return;
                 }
 
@@ -301,7 +306,7 @@ const start = async () => {
                     });
 
                     if (admin?.rol !== 'ADMIN') {
-                        console.error(`[BAN ERROR] User ${adminId} is not an ADMIN. Role: ${admin?.rol}`);
+                        console.error(`[BAN ERROR] Usuario ${adminId} no es ADMIN. Rol: ${admin?.rol}`);
                         return;
                     }
 
@@ -343,7 +348,7 @@ const start = async () => {
                     });
 
                     if (admin?.rol !== 'ADMIN') {
-                        console.error(`[CLEAR CHAT ERROR] User ${adminId} is not an ADMIN.`);
+                        console.error(`[CLEAR CHAT ERROR] Usuario ${adminId} no es ADMIN.`);
                         return;
                     }
 

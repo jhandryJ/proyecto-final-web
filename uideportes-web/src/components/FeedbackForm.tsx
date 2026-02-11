@@ -47,7 +47,7 @@ export function FeedbackForm({ isOpen, onClose, onSuccess }: FeedbackFormProps) 
             onSuccess();
             onClose();
         } catch (err: any) {
-            console.error('Error submitting feedback:', err);
+            console.error('Error al enviar comentario:', err);
             setError(err.response?.data?.message || 'Error al enviar el feedback');
         } finally {
             setLoading(false);

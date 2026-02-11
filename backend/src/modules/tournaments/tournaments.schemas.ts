@@ -3,8 +3,14 @@ import { z } from 'zod';
 export const createCampeonatoSchema = z.object({
     nombre: z.string().min(3).describe('Name of the Championship'),
     anio: z.number().int().min(2025).describe('Year of the championship'),
-    fechaInicio: z.any().describe('Start date'), // Flexible for Date or string
-    fechaFin: z.any().optional().describe('End date')
+    fechaInicio: z.coerce.date().describe('Start date'),
+    fechaFin: z.coerce.date().optional().describe('End date'),
+    torneos: z.array(z.object({
+        disciplina: z.enum(['FUTBOL', 'BASKET', 'ECUAVOLEY']),
+        categoria: z.enum(['ELIMINATORIA', 'FASE_GRUPOS', 'TODOS_CONTRA_TODOS']),
+        genero: z.enum(['MASCULINO', 'FEMENINO', 'MIXTO']),
+        costoInscripcion: z.number().min(0).optional().default(0)
+    })).optional().describe('List of tournaments to create immediately')
 });
 
 export const createTorneoSchema = z.object({
@@ -48,7 +54,8 @@ export const generateDrawSchema = z.object({
     type: z.enum(['BRACKET', 'GRUPOS']),
     settings: z.object({
         groupsCount: z.number().int().min(2).optional(),
-        manualAssignments: z.record(z.array(z.number())).optional()
+        manualAssignments: z.record(z.array(z.number())).optional(),
+        force: z.boolean().optional()
     }).optional()
 });
 

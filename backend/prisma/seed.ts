@@ -2,129 +2,90 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
-const facultadesData = [
-    {
-        nombre: 'Facultad de Business School',
-        carreras: [
-            'Administración de Empresas',
-            'Marketing',
-            'Negocios Internacionales',
-            'Finanzas y Negocios Digitales',
-            'Gastronomía',
-            'Gestión Comercial',
-            'Contabilidad y Auditoría', // Online
-            'Finanzas', // Online
-            'Mercadotecnia' // Online
-        ]
-    },
-    {
-        nombre: 'Facultad de Ingenierías Aplicadas y Desarrollo Industrial',
-        carreras: [
-            'Ingeniería Automotriz',
-            'Ingeniería Civil',
-            'Ingeniería Industrial',
-            'Ingeniería Mecatrónica'
-        ]
-    },
-    {
-        nombre: 'Facultad de Arquitectura, Diseño y Arte',
-        carreras: [
-            'Arquitectura',
-            'Diseño Gráfico',
-            'Multimedia y Producción Audiovisual',
-            'Diseño de Interiores' // Kept from previous list if valid, though user didn't explicitly list it in new text, but fits category.
-        ]
-    },
-    {
-        nombre: 'Facultad de Ciencias Médicas, de la Salud y la Vida',
-        carreras: [
-            'Enfermería',
-            'Fisioterapia',
-            'Medicina',
-            'Medicina Veterinaria',
-            'Nutrición y Dietética',
-            'Odontología',
-            'Psicología',
-            'Psicología Clínica'
-        ]
-    },
-    {
-        nombre: 'Facultad de Ingenierías Digitales y Tecnologías Emergentes',
-        carreras: [
-            'Ingeniería en Sistemas de la Información',
-            'Ingeniería en Tecnologías de la Información',
-            'Ingeniería en Ciberseguridad',
-            'Ingeniería en Software',
-            'Ingeniería en Sistemas' // Variant mentioned in Guayaquil
-        ]
-    },
-    {
-        nombre: 'Facultad de Jurisprudencia, Ciencias Sociales y Humanidades A. F. Córdova',
-        carreras: [
-            'Derecho',
-            'Ciencias Políticas y Relaciones Internacionales',
-            'Comunicación y Medios Digitales',
-            'Comunicación' // Online variant
-        ]
-    },
-    {
-        nombre: 'Facultad de Ciencias de la Hospitalidad y Turismo', // Keeping if still valid, though user didn't list in new text explicitly under this header but Gastronomy is in Business School now?
-        // User put Gastronomy in Business School.
-        // Hospitalidad y Hotelería wasn't in the new list. 
-        // I will keep this purely for safety if existing users have it, or comment it out if strictly following new list.
-        // User said "arrega estas facultades", implying this IS the list.
-        // I will commented it out to respect the authoritative list.
-        carreras: []
-    }
-];
+async function main() {
+    console.log('🌱 Seeding database with UIDE faculties and careers...');
 
-async function seed() {
-    console.log('🌱 Starting seeding...');
+    // Crear Facultades
+    const facultades = await Promise.all([
+        prisma.facultad.upsert({
+            where: { id: 1 },
+            update: { nombre: 'Facultad de Ciencias Administrativas y Económicas' },
+            create: {
+                id: 1,
+                nombre: 'Facultad de Ciencias Administrativas y Económicas',
+            },
+        }),
+        prisma.facultad.upsert({
+            where: { id: 2 },
+            update: { nombre: 'Facultad de Arquitectura, Diseño y Arte' },
+            create: {
+                id: 2,
+                nombre: 'Facultad de Arquitectura, Diseño y Arte',
+            },
+        }),
+        prisma.facultad.upsert({
+            where: { id: 3 },
+            update: { nombre: 'Facultad de Jurisprudencia, Ciencias Sociales y Humanidades A. F. Córdova' },
+            create: {
+                id: 3,
+                nombre: 'Facultad de Jurisprudencia, Ciencias Sociales y Humanidades A. F. Córdova',
+            },
+        }),
+        prisma.facultad.upsert({
+            where: { id: 4 },
+            update: { nombre: 'Facultad de Ingenierías Digitales y Tecnologías Emergentes' },
+            create: {
+                id: 4,
+                nombre: 'Facultad de Ingenierías Digitales y Tecnologías Emergentes',
+            },
+        }),
+    ]);
 
-    for (const fac of facultadesData) {
-        if (fac.carreras.length === 0) continue;
+    console.log('✅ Facultades creadas/actualizadas:', facultades.length);
 
-        // Find or create Faculty
-        const existingFac = await prisma.facultad.findFirst({
-            where: { nombre: fac.nombre }
+    // Crear Carreras
+    const carreras = [
+        // Facultad de Ciencias Administrativas y Económicas
+        { nombre: 'Administración de Empresas', facultadId: 1 },
+        { nombre: 'Marketing', facultadId: 1 },
+        { nombre: 'Negocios Internacionales', facultadId: 1 },
+
+        // Facultad de Arquitectura, Diseño y Arte
+        { nombre: 'Arquitectura', facultadId: 2 },
+
+        // Facultad de Jurisprudencia, Ciencias Sociales y Humanidades
+        { nombre: 'Derecho', facultadId: 3 },
+        { nombre: 'Psicología Clínica', facultadId: 3 },
+
+        // Facultad de Ingenierías Digitales y Tecnologías Emergentes
+        { nombre: 'Ingeniería en Sistemas de la Información', facultadId: 4 },
+    ];
+
+    let carrerasCreadas = 0;
+    for (const carrera of carreras) {
+        await prisma.carrera.upsert({
+            where: {
+                nombre_facultadId: {
+                    nombre: carrera.nombre,
+                    facultadId: carrera.facultadId,
+                },
+            },
+            update: {},
+            create: carrera,
         });
-
-        let facultadId;
-
-        if (existingFac) {
-            console.log(`Facultad exists: ${fac.nombre}`);
-            facultadId = existingFac.id;
-        } else {
-            console.log(`Creating Facultad: ${fac.nombre}`);
-            const newFac = await prisma.facultad.create({
-                data: { nombre: fac.nombre }
-            });
-            facultadId = newFac.id;
-        }
-
-        for (const carName of fac.carreras) {
-            const existingCarrera = await prisma.carrera.findFirst({
-                where: { nombre: carName, facultadId: facultadId }
-            });
-
-            if (!existingCarrera) {
-                console.log(`  Creating Carrera: ${carName}`);
-                await prisma.carrera.create({
-                    data: {
-                        nombre: carName,
-                        facultadId: facultadId
-                    }
-                });
-            } else {
-                console.log(`  Carrera exists: ${carName}`);
-            }
-        }
+        carrerasCreadas++;
     }
+
+    console.log('✅ Carreras creadas/actualizadas:', carrerasCreadas);
+    console.log('🎉 Seeding completado!');
+    console.log('\n📊 Resumen:');
+    console.log('  - 4 Facultades');
+    console.log('  - 7 Carreras');
 }
 
-seed()
+main()
     .catch((e) => {
-        console.error(e);
+        console.error('❌ Error en seeding:', e);
         process.exit(1);
     })
     .finally(async () => {

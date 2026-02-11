@@ -25,3 +25,23 @@ export const canchaResponseSchema = z.object({
     nombre: z.string(),
     ubicacion: z.string().nullable().optional()
 });
+
+// --- Esquemas para Carreras ---
+
+export const carreraResponseSchema = z.object({
+    id: z.number(),
+    nombre: z.string(),
+    facultadId: z.number(),
+    facultad: z.object({
+        id: z.number(),
+        nombre: z.string()
+    }).optional()
+});
+
+// --- Esquemas para Facultades ---
+
+export const facultadResponseSchema = z.object({
+    id: z.number(),
+    nombre: z.string(),
+    carreras: z.array(carreraResponseSchema).optional()
+});

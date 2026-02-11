@@ -67,9 +67,9 @@ export function TournamentRegistrationModal({
                 onClose();
             }
         } catch (err: any) {
-            console.error('Error registering:', err);
+            console.error('Error al inscribirse:', err);
             if (err.response) {
-                console.log('Registration Error Info:', {
+                console.log('Info de Error de Inscripción:', {
                     status: err.response.status,
                     data: err.response.data
                 });
@@ -77,7 +77,7 @@ export function TournamentRegistrationModal({
 
             // Check if already registered but pending payment (Recovery Flow)
             if (err.response?.status === 409 && err.response.data?.status === 'PENDIENTE_PAGO') {
-                console.log('Detected PENDIENTE_PAGO, showing payment upload');
+                console.log('Detectado PENDIENTE_PAGO, mostrando subida de pago');
                 setRegisteredTeamId(parseInt(selectedTeamId));
                 setShowPaymentUpload(true);
                 return;

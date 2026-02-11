@@ -45,7 +45,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 setToken(storedToken);
                 setUser(JSON.parse(storedUser));
             } catch (error) {
-                console.error('Error parsing stored user:', error);
+                console.error('Error al parsear usuario almacenado:', error);
                 localStorage.removeItem('accessToken');
                 localStorage.removeItem('user');
                 sessionStorage.removeItem('accessToken');
@@ -107,7 +107,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 export const useAuth = () => {
     const context = useContext(AuthContext);
     if (!context) {
-        throw new Error('useAuth must be used within AuthProvider');
+        throw new Error('useAuth debe ser usado dentro de AuthProvider');
     }
     return context;
 };

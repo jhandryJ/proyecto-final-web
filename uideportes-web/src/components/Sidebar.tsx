@@ -16,7 +16,9 @@ import {
     Videocam as VideoIcon,
     BarChart as BarChartIcon,
     People as UsersIcon,
+    Logout as LogoutIcon,
 } from '@mui/icons-material';
+import { useNavigate } from 'react-router-dom';
 
 interface SidebarProps {
     open: boolean;
@@ -38,7 +40,8 @@ const menuItems = [
 import { useAuth } from '../context/AuthContext';
 
 export function Sidebar({ open, onClose, activeTab, onTabChange }: SidebarProps) {
-    const { isAdmin } = useAuth();
+    const { isAdmin, logout } = useAuth();
+    const navigate = useNavigate();
 
     const handleItemClick = (tabId: string) => {
         onTabChange(tabId);
@@ -116,6 +119,41 @@ export function Sidebar({ open, onClose, activeTab, onTabChange }: SidebarProps)
             </List>
 
             <Box sx={{ flexGrow: 1 }} />
+
+            <List sx={{ px: 2, mb: 1 }}>
+                <ListItem disablePadding>
+                    <ListItemButton
+                        onClick={() => {
+                            logout();
+                            navigate('/login');
+                        }}
+                        sx={{
+                            borderRadius: 2,
+                            py: 1.5,
+                            px: 2,
+                            color: 'rgba(255, 255, 255, 0.7)',
+                            '&:hover': {
+                                backgroundColor: 'rgba(255, 0, 0, 0.1)',
+                                color: '#ff4444',
+                            },
+                            transition: 'all 0.2s ease-in-out',
+                        }}
+                    >
+                        <ListItemIcon sx={{ minWidth: 40, color: 'inherit' }}>
+                            <LogoutIcon />
+                        </ListItemIcon>
+                        <ListItemText
+                            primary="Cerrar Sesión"
+                            primaryTypographyProps={{
+                                fontSize: '0.95rem',
+                                fontWeight: 500,
+                            }}
+                        />
+                    </ListItemButton>
+                </ListItem>
+            </List>
+
+            <Divider sx={{ borderColor: 'rgba(255,255,255,0.2)' }} />
 
             <Box sx={{ p: 2, textAlign: 'center' }}>
                 <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.7)' }}>

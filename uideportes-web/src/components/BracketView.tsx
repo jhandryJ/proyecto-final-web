@@ -13,18 +13,19 @@ export const BracketView: React.FC<BracketViewProps> = ({ matchups, isAdmin, onE
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
-    // Map phase names to logical round numbers
+    // Mapear nombres de fase a números de ronda lógicos
     const getPhaseOrder = (fase: string | undefined): number => {
         if (!fase) return 0;
         const normalized = fase.toUpperCase();
-        if (normalized.includes('FINAL') && !normalized.includes('SEMI') && !normalized.includes('OCTAVOS') && !normalized.includes('CUARTOS')) return 4;
-        if (normalized.includes('SEMIFINAL')) return 3;
-        if (normalized.includes('CUARTOS')) return 2;
-        if (normalized.includes('OCTAVOS')) return 1;
+        if (normalized.includes('FINAL') && !normalized.includes('SEMI') && !normalized.includes('OCTAVOS') && !normalized.includes('CUARTOS')) return 5;
+        if (normalized.includes('SEMIFINAL')) return 4;
+        if (normalized.includes('CUARTOS')) return 3;
+        if (normalized.includes('OCTAVOS')) return 2;
+        if (normalized.includes('DIECISEISAVOS')) return 1;
         return 0; // Unknown or Groups
     };
 
-    // Group matchups by round
+    // Agrupar enfrentamientos por ronda
     const rounds = matchups.reduce((acc, match) => {
         let round = match.round;
         if (!round && match.fase) {
@@ -46,15 +47,17 @@ export const BracketView: React.FC<BracketViewProps> = ({ matchups, isAdmin, onE
     const roundNumbers = Object.keys(rounds).map(Number).sort((a, b) => a - b);
 
     const getRoundName = (round: number) => {
-        if (round === 4) return 'GRAN FINAL';
-        if (round === 3) return 'SEMIFINALES';
-        if (round === 2) return 'CUARTOS DE FINAL';
-        if (round === 1) return 'OCTAVOS DE FINAL';
+        if (round === 5) return 'GRAN FINAL';
+        if (round === 4) return 'SEMIFINALES';
+        if (round === 3) return 'CUARTOS DE FINAL';
+        if (round === 2) return 'OCTAVOS DE FINAL';
+        if (round === 1) return 'DIECISEISAVOS DE FINAL';
         return `RONDA ${round}`;
     };
 
-    // Determine tournament winner
-    const finalMatch = rounds[4]?.[0];
+    // Determinar el ganador del torneo
+    const finalRoundNumber = roundNumbers.length > 0 ? Math.max(...roundNumbers) : 5;
+    const finalMatch = rounds[finalRoundNumber]?.[0];
     let tournamentWinner: string | null = null;
     if (finalMatch && finalMatch.result?.played) {
         if (finalMatch.result.team1Score > finalMatch.result.team2Score) {
@@ -66,8 +69,8 @@ export const BracketView: React.FC<BracketViewProps> = ({ matchups, isAdmin, onE
 
     return (
         <Box sx={{
-            p: { xs: 2, md: 4 },
-            minHeight: 600,
+            p: 2, // Padding reducido
+            minHeight: 'auto', // Altura mínima reducida
             background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
             borderRadius: 2,
             overflow: 'hidden'
@@ -103,17 +106,17 @@ export const BracketView: React.FC<BracketViewProps> = ({ matchups, isAdmin, onE
 
             <Box className="bracket-container" sx={{
                 display: 'flex',
-                gap: { xs: 4, md: 8 },
+                gap: 2, // Gap reducido de 4 (32px) a 2 (16px)
                 overflowX: 'auto',
-                pb: 4,
+                pb: 2, // Padding reducido
                 px: 2,
                 justifyContent: roundNumbers.length < 3 ? 'center' : 'flex-start',
-                alignItems: 'stretch', // Changed to stretch for alignment
-                minHeight: 500
+                alignItems: 'center', // Cambiado de stretch a center
+                minHeight: 'auto' // Removido minHeight fijo
             }}>
                 {roundNumbers.map((roundNumber, index) => {
                     const roundMatches = rounds[roundNumber];
-                    // Chunk matches into pairs
+                    // Dividir partidos en pares
                     const pairs = [];
                     for (let i = 0; i < roundMatches.length; i += 2) {
                         pairs.push(roundMatches.slice(i, i + 2));
@@ -125,21 +128,23 @@ export const BracketView: React.FC<BracketViewProps> = ({ matchups, isAdmin, onE
                         <Box key={roundNumber} sx={{
                             display: 'flex',
                             flexDirection: 'column',
-                            justifyContent: 'space-around',
-                            minWidth: 300,
+                            justifyContent: 'center', // Centrar partidos verticalmente
+                            gap: 4, // Agregar espacio entre pares/partidos
+                            minWidth: 180, // Ancho reducido del contenedor de tarjeta de partido
                             animation: `fadeInUp 0.6s ease-out ${index * 0.2}s backwards`,
                             position: 'relative',
-                            zIndex: 1
+                            zIndex: 1,
+                            py: 4 // Agregar padding vertical a la columna
                         }}>
                             <Typography
-                                variant="subtitle1"
+                                variant="subtitle2" // Fuente más pequeña
                                 align="center"
                                 sx={{
                                     fontWeight: 'bold',
                                     color: '#5c6bc0',
                                     textTransform: 'uppercase',
-                                    letterSpacing: 1,
-                                    fontSize: '0.9rem',
+                                    letterSpacing: 0.5,
+                                    fontSize: '0.7rem',
                                     mb: 2,
                                     position: 'absolute',
                                     top: 0,
@@ -150,14 +155,14 @@ export const BracketView: React.FC<BracketViewProps> = ({ matchups, isAdmin, onE
                                 {getRoundName(roundNumber)}
                             </Typography>
 
-                            <Box sx={{ mt: 6, display: 'flex', flexDirection: 'column', justifyContent: 'space-around', flexGrow: 1 }}>
+                            <Box sx={{ mt: 4, display: 'flex', flexDirection: 'column', gap: 2 }}>
                                 {pairs.map((pair, pIndex) => (
                                     <Box key={pIndex} sx={{
                                         display: 'flex',
                                         flexDirection: 'column',
-                                        gap: pair.length === 2 ? 4 : 0,
+                                        gap: pair.length === 2 ? 1 : 0, // Gap reducido entre partidos emparejados
                                         position: 'relative',
-                                        my: 2
+                                        my: 0.5
                                     }}>
                                         {pair.map((match) => (
                                             <Box key={match.id} sx={{ position: 'relative', zIndex: 2 }}>
@@ -167,58 +172,47 @@ export const BracketView: React.FC<BracketViewProps> = ({ matchups, isAdmin, onE
                                                     onEdit={onEditMatch}
                                                 />
 
-                                                {/* Single Line for final or odd matches without pair */}
+                                                {/* Línea única para final o partidos impares sin par */}
                                                 {!isMobile && !isLastRound && pair.length === 1 && (
                                                     <Box sx={{
                                                         position: 'absolute',
-                                                        right: -32,
+                                                        right: -24, // Cerrar el espacio
                                                         top: '50%',
-                                                        width: 32,
+                                                        width: 24,
                                                         height: 2,
-                                                        bgcolor: '#bdbdbd'
+                                                        bgcolor: '#94a3b8',
+                                                        borderRadius: 1
                                                     }} />
                                                 )}
                                             </Box>
                                         ))}
 
-                                        {/* Connector Bracket for Pairs */}
+                                        {/* Conector de corchete para pares */}
                                         {!isMobile && !isLastRound && pair.length === 2 && (
                                             <>
-                                                {/* Vertical Line */}
+                                                {/* La forma del corchete conector */}
                                                 <Box sx={{
                                                     position: 'absolute',
-                                                    right: -20,
-                                                    top: '25%', // Approx center of first card (adjust if card height changes)
-                                                    bottom: '25%', // Approx center of second card
-                                                    width: 2,
-                                                    bgcolor: '#bdbdbd'
+                                                    top: '25%', // Comenzar en el centro de la tarjeta superior
+                                                    bottom: '25%', // Terminar en el centro de la tarjeta inferior
+                                                    right: -12, // Extender a la derecha
+                                                    width: 12, // Ancho de segmentos horizontales
+                                                    borderRight: '2px solid #94a3b8',
+                                                    borderTop: '2px solid #94a3b8',
+                                                    borderBottom: '2px solid #94a3b8',
+                                                    borderTopRightRadius: 8,
+                                                    borderBottomRightRadius: 8,
                                                 }} />
-                                                {/* Top Horizontal stub */}
+
+                                                {/* La línea horizontal a la siguiente ronda */}
                                                 <Box sx={{
                                                     position: 'absolute',
-                                                    right: -20,
-                                                    top: '25%',
-                                                    width: 20,
-                                                    height: 2,
-                                                    bgcolor: '#bdbdbd'
-                                                }} />
-                                                {/* Bottom Horizontal stub */}
-                                                <Box sx={{
-                                                    position: 'absolute',
-                                                    right: -20,
-                                                    bottom: '25%',
-                                                    width: 20,
-                                                    height: 2,
-                                                    bgcolor: '#bdbdbd'
-                                                }} />
-                                                {/* Center Outgoing stub */}
-                                                <Box sx={{
-                                                    position: 'absolute',
-                                                    right: -52, // Extend to next column
                                                     top: '50%',
-                                                    width: 32,
+                                                    right: -24, // Cerrar el espacio restante a la siguiente ronda (12 corchete + 12 espacio)
+                                                    width: 12,
                                                     height: 2,
-                                                    bgcolor: '#bdbdbd'
+                                                    bgcolor: '#94a3b8',
+                                                    transform: 'translateY(-1px)' // Alineación perfecta al centro
                                                 }} />
                                             </>
                                         )}
@@ -229,21 +223,21 @@ export const BracketView: React.FC<BracketViewProps> = ({ matchups, isAdmin, onE
                     );
                 })}
 
-                {/* Winner Section */}
+                {/* Sección del ganador */}
                 {tournamentWinner && (
                     <Box sx={{
                         display: 'flex',
                         flexDirection: 'column',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        minWidth: 320,
+                        minWidth: 200, // Reducido
                         animation: 'fadeInUp 0.8s ease-out 0.8s backwards',
-                        pl: 4,
-                        mt: 6
+                        pl: 2,
+                        mt: 0
                     }}>
-                        <Paper elevation={12} sx={{
-                            width: 260,
-                            height: 260,
+                        <Paper elevation={8} sx={{
+                            width: 180, // Reducido de 260
+                            height: 180,
                             borderRadius: '50%',
                             display: 'flex',
                             flexDirection: 'column',
@@ -253,17 +247,18 @@ export const BracketView: React.FC<BracketViewProps> = ({ matchups, isAdmin, onE
                             color: 'white',
                             position: 'relative',
                             animation: 'pulse-gold 3s infinite',
-                            border: '8px solid rgba(255,255,255,0.4)'
+                            border: '6px solid rgba(255,255,255,0.4)'
                         }}>
-                            <TrophyIcon sx={{ fontSize: 80, mb: 1, filter: 'drop-shadow(0 4px 4px rgba(0,0,0,0.2))' }} />
-                            <Typography variant="overline" sx={{ fontWeight: 'bold', fontSize: '1rem', lineHeight: 1 }}>
+                            <TrophyIcon sx={{ fontSize: 50, mb: 1, filter: 'drop-shadow(0 4px 4px rgba(0,0,0,0.2))' }} />
+                            <Typography variant="overline" sx={{ fontWeight: 'bold', fontSize: '0.8rem', lineHeight: 1 }}>
                                 CAMPEÓN
                             </Typography>
-                            <Typography variant="h5" align="center" sx={{
+                            <Typography variant="h6" align="center" sx={{
                                 fontWeight: 900,
-                                px: 2,
+                                px: 1,
                                 textShadow: '2px 2px 4px rgba(0,0,0,0.3)',
-                                lineHeight: 1.1
+                                lineHeight: 1.1,
+                                fontSize: '1rem'
                             }}>
                                 {tournamentWinner}
                             </Typography>
@@ -278,7 +273,15 @@ export const BracketView: React.FC<BracketViewProps> = ({ matchups, isAdmin, onE
 const MatchCard = ({ match, isAdmin, onEdit }: { match: Matchup, isAdmin?: boolean, onEdit?: (m: Matchup) => void }) => {
     const isPlayed = match.result?.played;
     const team1Name = match.team1 || match.equipoLocal?.nombre || 'Por definir';
-    const team2Name = match.team2 || match.equipoVisitante?.nombre || 'Por definir';
+    const team1Logo = match.equipoLocal?.logoUrl;
+
+    // Verificar si es un partido Bye: Jugado/Finalizado pero sin oponente
+    const isBye = isPlayed && !match.team2 && !match.equipoVisitante;
+
+    const team2Name = isBye
+        ? 'BYE (Pase directo)'
+        : (match.team2 || match.equipoVisitante?.nombre || 'Por definir');
+    const team2Logo = !isBye ? match.equipoVisitante?.logoUrl : undefined;
 
     let winnerName: string | null = null;
     if (isPlayed && match.result) {
@@ -290,12 +293,14 @@ const MatchCard = ({ match, isAdmin, onEdit }: { match: Matchup, isAdmin?: boole
         <Paper
             elevation={3}
             sx={{
-                width: 280,
-                borderRadius: 1,
+                width: 190, // Slightly wider for logos
+                borderRadius: 2,
                 overflow: 'hidden',
-                transition: 'all 0.2s ease',
-                border: '1px solid rgba(0,0,0,0.05)',
+                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                border: '1px solid rgba(255, 255, 255, 0.3)',
                 position: 'relative',
+                backdropFilter: 'blur(8px)',
+                bgcolor: 'rgba(255, 255, 255, 0.9)',
                 '&:hover': {
                     transform: 'translateY(-4px)',
                     boxShadow: '0 12px 24px rgba(0,0,0,0.1)',
@@ -303,68 +308,91 @@ const MatchCard = ({ match, isAdmin, onEdit }: { match: Matchup, isAdmin?: boole
                 }
             }}
         >
-            {isAdmin && onEdit && (
+            {isAdmin && onEdit && !isBye && (
                 <IconButton
                     className="edit-button"
                     size="small"
                     onClick={() => onEdit(match)}
                     sx={{
                         position: 'absolute',
-                        top: 4,
-                        right: 4,
-                        bgcolor: 'rgba(255,255,255,0.8)',
+                        top: 2,
+                        right: 2,
+                        bgcolor: 'rgba(255,255,255,0.9)',
                         zIndex: 3,
                         opacity: 0,
+                        padding: 0.5,
                         transition: 'opacity 0.2s',
-                        '&:hover': { bgcolor: 'primary.main', color: 'white' }
+                        '&:hover': { bgcolor: 'primary.main', color: 'white' },
+                        boxShadow: 1
                     }}
                 >
-                    <EditIcon fontSize="small" />
+                    <EditIcon sx={{ fontSize: '0.9rem' }} />
                 </IconButton>
             )}
-            <Box sx={{ bgcolor: 'white' }}>
+            <Box>
                 <TeamRow
                     name={team1Name}
-                    score={match.result?.team1Score}
+                    logo={team1Logo}
+                    score={isBye ? undefined : match.result?.team1Score}
                     isWinner={winnerName === team1Name}
                     isPlayed={isPlayed}
+                    hideScore={isBye}
                 />
-                <Box sx={{ height: 1, bgcolor: '#f0f0f0', mx: 2 }} />
+                <Box sx={{ height: 1, bgcolor: 'rgba(0,0,0,0.05)', mx: 1.5 }} />
                 <TeamRow
                     name={team2Name}
-                    score={match.result?.team2Score}
+                    logo={team2Logo}
+                    score={isBye ? undefined : match.result?.team2Score}
                     isWinner={winnerName === team2Name}
                     isPlayed={isPlayed}
+                    isByeSlot={isBye}
                 />
             </Box>
             <Box sx={{
-                bgcolor: '#fafafa',
+                bgcolor: 'rgba(241, 245, 249, 0.8)',
                 py: 0.5,
-                px: 2,
+                px: 1.5,
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
-                borderTop: '1px solid #f0f0f0'
+                borderTop: '1px solid rgba(0,0,0,0.05)'
             }}>
-                <Typography variant="caption" sx={{ color: '#9e9e9e', fontWeight: 600, fontSize: '0.7rem' }}>
+                <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 700, fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: 0.5 }}>
                     {match.fase || 'Eliminatoria'}
                 </Typography>
                 {isPlayed && (
-                    <Box sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: '#4caf50' }} />
+                    <Box sx={{
+                        width: 6,
+                        height: 6,
+                        borderRadius: '50%',
+                        bgcolor: '#22c55e',
+                        boxShadow: '0 0 4px #22c55e'
+                    }} />
                 )}
             </Box>
         </Paper>
     );
 };
 
-const TeamRow = ({ name, score, isWinner, isPlayed }: { name: string, score: number | undefined, isWinner: boolean, isPlayed: boolean | undefined }) => (
+interface TeamRowProps {
+    name: string;
+    logo?: string;
+    score: number | undefined;
+    isWinner: boolean;
+    isPlayed: boolean | undefined;
+    hideScore?: boolean;
+    isByeSlot?: boolean;
+}
+
+const TeamRow = ({ name, logo, score, isWinner, isPlayed, hideScore, isByeSlot }: TeamRowProps) => (
     <Box sx={{
-        p: 2,
+        p: 1.2,
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
-        background: isWinner ? 'linear-gradient(90deg, rgba(232, 245, 233, 0.5) 0%, rgba(255,255,255,0) 100%)' : 'transparent',
-        position: 'relative'
+        background: isWinner ? 'linear-gradient(90deg, rgba(34, 197, 94, 0.08) 0%, rgba(255,255,255,0) 100%)' : 'transparent',
+        position: 'relative',
+        opacity: isByeSlot ? 0.6 : 1
     }}>
         {isWinner && (
             <Box sx={{
@@ -373,42 +401,58 @@ const TeamRow = ({ name, score, isWinner, isPlayed }: { name: string, score: num
                 top: 0,
                 bottom: 0,
                 width: 4,
-                bgcolor: '#4caf50'
+                bgcolor: '#22c55e',
+                borderTopRightRadius: 4,
+                borderBottomRightRadius: 4
             }} />
         )}
-        <Stack direction="row" spacing={1.5} alignItems="center" sx={{ maxWidth: '80%' }}>
-            <Avatar sx={{
-                width: 28,
-                height: 28,
-                fontSize: 14,
-                fontWeight: 'bold',
-                bgcolor: isWinner ? '#4caf50' : '#e0e0e0',
-                color: isWinner ? 'white' : '#757575'
-            }}>
-                {name.charAt(0)}
+        <Stack direction="row" spacing={1.5} alignItems="center" sx={{ maxWidth: '80%', flexGrow: 1 }}>
+            <Avatar
+                src={logo}
+                alt={name}
+                sx={{
+                    width: 24,
+                    height: 24,
+                    fontSize: 10,
+                    fontWeight: 'bold',
+                    bgcolor: isWinner ? '#22c55e' : (isByeSlot ? 'transparent' : '#f1f5f9'),
+                    color: isWinner ? 'white' : '#64748b',
+                    border: isByeSlot ? '1px dashed #cbd5e1' : '1px solid rgba(0,0,0,0.05)',
+                    transition: 'transform 0.2s',
+                    '&:hover': { transform: 'scale(1.1)' }
+                }}
+            >
+                {isByeSlot ? '-' : name.charAt(0)}
             </Avatar>
             <Typography
-                variant="body1"
+                variant="body2"
                 sx={{
                     fontWeight: isWinner ? 700 : 500,
-                    color: isPlayed && !isWinner ? '#757575' : '#212121',
-                    fontSize: '0.95rem'
+                    color: isPlayed && !isWinner ? '#64748b' : '#1e293b',
+                    fontSize: '0.8rem',
+                    fontStyle: isByeSlot ? 'italic' : 'normal',
+                    lineHeight: 1.2
                 }}
                 noWrap
             >
                 {name}
             </Typography>
         </Stack>
-        <Typography
-            variant="h6"
-            sx={{
-                fontWeight: 800,
-                color: isWinner ? '#2e7d32' : '#757575',
+        {!isByeSlot && !hideScore && (
+            <Box sx={{
                 minWidth: 24,
-                textAlign: 'center'
-            }}
-        >
-            {score !== undefined ? score : '-'}
-        </Typography>
+                height: 24,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                bgcolor: isWinner ? '#22c55e' : (score !== undefined ? '#f1f5f9' : 'transparent'),
+                color: isWinner ? 'white' : '#64748b',
+                borderRadius: 1,
+                fontSize: '0.85rem',
+                fontWeight: 700
+            }}>
+                {score !== undefined ? score : '-'}
+            </Box>
+        )}
     </Box>
 );

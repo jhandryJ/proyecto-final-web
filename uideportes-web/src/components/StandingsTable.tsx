@@ -59,7 +59,7 @@ export function StandingsTable({ tournaments }: StandingsTableProps) {
             const data = await standingsService.getByTournament(torneoId);
             setStandings(data);
         } catch (err: any) {
-            console.error('Error loading standings:', err);
+            console.error('Error al cargar tabla de posiciones:', err);
             setError(err.response?.data?.message || 'Error al cargar tabla de posiciones');
             setStandings(null);
         } finally {
@@ -190,7 +190,7 @@ export function StandingsTable({ tournaments }: StandingsTableProps) {
                     onChange={(e) => setSelectedTournamentId(e.target.value ? parseInt(e.target.value) : null)}
                 >
                     {tournaments.map((tournament) => (
-                        <MenuItem key={tournament.id} value={tournament.id}>
+                        <MenuItem key={tournament.id} value={tournament.id.toString()}>
                             {tournament.name || `${tournament.disciplina} - ${tournament.categoria}`}
                         </MenuItem>
                     ))}

@@ -1,5 +1,5 @@
 import { FastifyInstance } from 'fastify';
-import { getNotificationsHandler, markNotificationReadHandler, markAllNotificationsReadHandler } from './notifications.controller.js';
+import { getNotificationsHandler, markNotificationReadHandler, markAllNotificationsReadHandler, deleteNotificationHandler } from './notifications.controller.js';
 
 export async function notificationRoutes(app: FastifyInstance) {
     app.get('/', {
@@ -13,4 +13,8 @@ export async function notificationRoutes(app: FastifyInstance) {
     app.put('/leida-todas', {
         preHandler: [app.authenticate]
     }, markAllNotificationsReadHandler);
+
+    app.delete('/:id', {
+        preHandler: [app.authenticate]
+    }, deleteNotificationHandler);
 }

@@ -7,7 +7,7 @@ import { ZodTypeProvider } from 'fastify-type-provider-zod';
 export async function streamingRoutes(app: FastifyInstance) {
     app.withTypeProvider<ZodTypeProvider>().get('/', {
         schema: {
-            description: 'Get all active streams',
+            description: 'Obtener todos los streams activos',
             tags: ['Streaming'],
             response: {
                 200: getStreamsResponseSchema
@@ -17,7 +17,7 @@ export async function streamingRoutes(app: FastifyInstance) {
 
     app.withTypeProvider<ZodTypeProvider>().get('/chat/:sala', {
         schema: {
-            description: 'Get chat history for a room',
+            description: 'Obtener historial de chat de una sala',
             tags: ['Streaming'],
             params: z.object({
                 sala: z.string()
@@ -30,7 +30,7 @@ export async function streamingRoutes(app: FastifyInstance) {
 
     app.withTypeProvider<ZodTypeProvider>().patch('/:id/like', {
         schema: {
-            description: 'Like a stream',
+            description: 'Dar like a un stream',
             tags: ['Streaming'],
             params: z.object({
                 id: z.string()
@@ -43,7 +43,7 @@ export async function streamingRoutes(app: FastifyInstance) {
 
     app.withTypeProvider<ZodTypeProvider>().post('/', {
         schema: {
-            description: 'Create a new stream',
+            description: 'Crear un nuevo stream',
             tags: ['Streaming'],
             body: createStreamSchema,
             response: {
@@ -59,7 +59,7 @@ export async function streamingRoutes(app: FastifyInstance) {
 
     app.withTypeProvider<ZodTypeProvider>().delete('/:id', {
         schema: {
-            description: 'Delete a stream',
+            description: 'Eliminar un stream',
             tags: ['Streaming'],
             params: deleteStreamSchema,
             response: {

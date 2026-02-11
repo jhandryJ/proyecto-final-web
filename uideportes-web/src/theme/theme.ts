@@ -3,9 +3,9 @@ import { createTheme } from '@mui/material/styles';
 export const theme = createTheme({
   palette: {
     primary: {
-      main: '#004B9B', // UIDE Blue (Lighter)
-      light: '#3391ff',
-      dark: '#003366',
+      main: '#001F52', // UIDE Blue
+      light: '#334195',
+      dark: '#000a2b',
       contrastText: '#ffffff',
     },
     secondary: {
@@ -43,22 +43,25 @@ export const theme = createTheme({
     button: {
       fontWeight: 700,
       textTransform: 'none',
+      letterSpacing: '0.5px',
     },
   },
   components: {
     MuiButton: {
       styleOverrides: {
         root: {
-          borderRadius: 12,
-          padding: '10px 24px',
-          transition: 'all 0.3s ease-in-out',
-          '&:hover': {
-            boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-            transform: 'translateY(-2px)',
-          },
+          borderRadius: 50, // Pill shape
+          padding: '12px 28px',
+          transition: 'all 0.3s ease',
+          fontSize: '1rem',
         },
         containedPrimary: {
-          background: 'linear-gradient(135deg, #001F52 0%, #003366 100%)',
+          background: '#001F52',
+          '&:hover': {
+            background: '#003366',
+            boxShadow: '0 4px 12px rgba(0,31,82,0.4)',
+            transform: 'translateY(-1px)',
+          },
         },
       },
     },

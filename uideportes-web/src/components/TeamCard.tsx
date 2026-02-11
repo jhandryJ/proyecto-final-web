@@ -7,7 +7,8 @@ import {
     Stack,
     Button,
     LinearProgress,
-    Divider
+    Divider,
+    Chip
 } from '@mui/material';
 import {
     TrendingUp as TrendingUpIcon,
@@ -64,9 +65,20 @@ export function TeamCard({ team, onViewDetails, onDelete, onEdit }: TeamCardProp
                             {!team.logoUrl && (team.nombre || team.name || '').charAt(0)}
                         </Avatar>
                         <Box>
-                            <Typography variant="h6" component="div" sx={{ fontWeight: 'bold', lineHeight: 1.2 }}>
-                                {team.nombre || team.name}
-                            </Typography>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                                <Typography variant="h6" component="div" sx={{ fontWeight: 'bold', lineHeight: 1.2 }}>
+                                    {team.nombre || team.name}
+                                </Typography>
+                                {team.genero && (
+                                    <Chip
+                                        label={team.genero}
+                                        size="small"
+                                        color={team.genero === 'FEMENINO' ? 'secondary' : team.genero === 'MASCULINO' ? 'primary' : 'default'}
+                                        variant="outlined"
+                                        sx={{ height: 20, fontSize: '0.7rem', fontWeight: 'bold' }}
+                                    />
+                                )}
+                            </Box>
                             {team.capitan && (
                                 <Typography variant="caption" color="primary" sx={{ display: 'block', fontWeight: 'bold', mt: 0.5 }}>
                                     Capitán: {team.capitan.nombres} {team.capitan.apellidos}

@@ -33,7 +33,8 @@ import {
     LiveTv,
     AdminPanelSettings,
     Block,
-    DeleteSweep as ClearChatIcon
+    DeleteSweep as ClearChatIcon,
+    Refresh as RefreshIcon
 } from '@mui/icons-material';
 import type { StreamEvent } from '../../../types';
 import { io, Socket } from 'socket.io-client';
@@ -67,6 +68,7 @@ const GlassCard = ({ children, sx, ...props }: any) => (
 interface UserStreamingSectionProps {
     streams: StreamEvent[];
     onLikeUpdate?: (streamId: number, newLikes: number) => void;
+    onRefresh?: () => void;
 }
 
 interface ChatMessage {
@@ -80,7 +82,7 @@ interface ChatMessage {
     userId?: string; // Needed for ban action
 }
 
-export function UserStreamingSection({ streams, onLikeUpdate }: UserStreamingSectionProps) {
+export function UserStreamingSection({ streams, onLikeUpdate, onRefresh }: UserStreamingSectionProps) {
     const { user } = useAuth();
     const [activeStreamId, setActiveStreamId] = useState<number | null>(null);
     const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
@@ -106,7 +108,7 @@ export function UserStreamingSection({ streams, onLikeUpdate }: UserStreamingSec
         socketRef.current = io('http://localhost:3000');
 
         socketRef.current.on('connect', () => {
-            console.log('Connected to socket server');
+            console.log('Conectado al servidor de socket');
             const room = activeStreamId ? `stream-${activeStreamId}` : 'general';
             socketRef.current?.emit('join_room', { room, userId: user?.id });
         });
@@ -188,7 +190,7 @@ export function UserStreamingSection({ streams, onLikeUpdate }: UserStreamingSec
             }));
             setChatMessages(mappedMessages);
         } catch (error) {
-            console.error('Error loading chat history:', error);
+            console.error('Error al cargar historial de chat:', error);
         }
     };
 
@@ -296,8 +298,18 @@ export function UserStreamingSection({ streams, onLikeUpdate }: UserStreamingSec
                     </Typography>
                     <Typography variant="body1" color="text.secondary" fontWeight="600" sx={{ opacity: 0.8 }}>
                         Transmisión oficial universitaria en alta definición
+                        Transmisión oficial universitaria en alta definición
                     </Typography>
                 </Box>
+                {onRefresh && (
+                    <Button
+                        startIcon={<RefreshIcon />}
+                        onClick={onRefresh}
+                        sx={{ ml: 'auto', color: '#001F52' }}
+                    >
+                        Actualizar
+                    </Button>
+                )}
             </Box>
 
             {liveStreams.length > 0 && (

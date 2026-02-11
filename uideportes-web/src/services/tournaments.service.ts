@@ -26,6 +26,7 @@ export interface CreateCampeonatoRequest {
     anio: number;
     fechaInicio: string;
     fechaFin?: string;
+    torneos?: CreateTorneoRequest[];
 }
 
 export interface CreateTorneoRequest {

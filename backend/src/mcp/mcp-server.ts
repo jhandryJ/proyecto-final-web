@@ -5,7 +5,7 @@ import {
     CallToolRequestSchema,
     ListToolsRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../utils/prisma.js';
 import { getTeamFilter, getTournamentFilter, getMatchFilter } from '../utils/rls-helpers.js';
 import { generateVerificationCode, getExpirationDate, isCodeExpired } from '../utils/verification-code.js';
 import { sendVerificationCode } from '../services/email.service.js';
@@ -26,9 +26,6 @@ let currentSession: Session = {
     userEmail: '',
     userName: ''
 };
-
-// Inicializar Prisma
-const prisma = new PrismaClient();
 
 /**
  * Helper para verificar autenticación antes de ejecutar herramientas protegidas

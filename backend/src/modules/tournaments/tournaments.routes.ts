@@ -10,7 +10,7 @@ export async function tournamentRoutes(app: FastifyInstance) {
     app.withTypeProvider<ZodTypeProvider>().get('/campeonatos', {
         schema: {
             tags: ['Torneos'],
-            summary: 'List all championships and tournaments',
+            summary: 'Listar todos los campeonatos y torneos',
             response: {
                 200: z.array(campeonatoResponseSchema)
             }
@@ -33,7 +33,7 @@ export async function tournamentRoutes(app: FastifyInstance) {
         privateApp.withTypeProvider<ZodTypeProvider>().post('/torneos/:id/inscripciones', {
             schema: {
                 tags: ['Inscripciones'],
-                summary: 'Register a team to a tournament',
+                summary: 'Inscribir un equipo a un torneo',
                 security: [{ bearerAuth: [] }],
                 params: z.object({ id: z.string() }),
                 body: addTeamToTorneoSchema,
@@ -50,7 +50,7 @@ export async function tournamentRoutes(app: FastifyInstance) {
             adminApp.withTypeProvider<ZodTypeProvider>().post('/campeonatos', {
                 schema: {
                     tags: ['Torneos'],
-                    summary: 'Create a new championship',
+                    summary: 'Crear un nuevo campeonato',
                     security: [{ bearerAuth: [] }],
                     body: createCampeonatoSchema,
                     response: {
@@ -62,7 +62,7 @@ export async function tournamentRoutes(app: FastifyInstance) {
             adminApp.withTypeProvider<ZodTypeProvider>().post('/torneos', {
                 schema: {
                     tags: ['Torneos'],
-                    summary: 'Add a tournament to a championship',
+                    summary: 'Agregar un torneo a un campeonato',
                     security: [{ bearerAuth: [] }],
                     body: createTorneoSchema,
                     response: {
@@ -75,7 +75,7 @@ export async function tournamentRoutes(app: FastifyInstance) {
             adminApp.withTypeProvider<ZodTypeProvider>().put('/campeonatos/:id', {
                 schema: {
                     tags: ['Torneos'],
-                    summary: 'Update a championship',
+                    summary: 'Actualizar un campeonato',
                     security: [{ bearerAuth: [] }],
                     params: z.object({ id: z.string() }),
                     body: updateCampeonatoSchema,
@@ -88,7 +88,7 @@ export async function tournamentRoutes(app: FastifyInstance) {
             adminApp.withTypeProvider<ZodTypeProvider>().put('/torneos/:id', {
                 schema: {
                     tags: ['Torneos'],
-                    summary: 'Update a tournament',
+                    summary: 'Actualizar un torneo',
                     security: [{ bearerAuth: [] }],
                     params: z.object({ id: z.string() }),
                     body: updateTorneoSchema,
@@ -101,7 +101,7 @@ export async function tournamentRoutes(app: FastifyInstance) {
             adminApp.withTypeProvider<ZodTypeProvider>().delete('/campeonatos/:id', {
                 schema: {
                     tags: ['Torneos'],
-                    summary: 'Delete a championship',
+                    summary: 'Eliminar un campeonato',
                     security: [{ bearerAuth: [] }],
                     params: z.object({ id: z.string() }),
                     response: {
@@ -113,7 +113,7 @@ export async function tournamentRoutes(app: FastifyInstance) {
             adminApp.withTypeProvider<ZodTypeProvider>().delete('/torneos/:id', {
                 schema: {
                     tags: ['Torneos'],
-                    summary: 'Delete a tournament',
+                    summary: 'Eliminar un torneo',
                     security: [{ bearerAuth: [] }],
                     params: z.object({ id: z.string() }),
                     response: {
@@ -125,7 +125,7 @@ export async function tournamentRoutes(app: FastifyInstance) {
             adminApp.withTypeProvider<ZodTypeProvider>().post('/torneos/:id/sorteo', {
                 schema: {
                     tags: ['Torneos'],
-                    summary: 'Generate draw (Brackets/Groups) for a tournament',
+                    summary: 'Generar sorteo (Llaves/Grupos) para un torneo',
                     security: [{ bearerAuth: [] }],
                     params: z.object({ id: z.string() }),
                     body: generateDrawSchema,
@@ -138,7 +138,7 @@ export async function tournamentRoutes(app: FastifyInstance) {
             adminApp.withTypeProvider<ZodTypeProvider>().post('/torneos/:id/promover', {
                 schema: {
                     tags: ['Torneos'],
-                    summary: 'Promote teams from Group Stage to Knockout Stage',
+                    summary: 'Promover equipos de Fase de Grupos a Fase Eliminatoria',
                     security: [{ bearerAuth: [] }],
                     params: z.object({ id: z.string() }),
                     response: {

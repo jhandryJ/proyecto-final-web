@@ -9,25 +9,82 @@ export async function createCampeonatoHandler(
     reply: FastifyReply
 ) {
     const data = request.body;
+    console.log('Cuerpo de Creación de Campeonato Recibido:', JSON.stringify(data, null, 2));
     try {
-        const campeonatoData: any = {
-            nombre: data.nombre,
-            anio: data.anio,
-            fechaInicio: new Date(data.fechaInicio)
-        };
+        const result = await prisma.$transaction(async (tx) => {
+            const campeonatoData: any = {
+                nombre: data.nombre,
+                anio: data.anio,
+                fechaInicio: new Date(data.fechaInicio)
+            };
 
-        // Only add fechaFin if it's provided and valid
-        if (data.fechaFin) {
-            campeonatoData.fechaFin = new Date(data.fechaFin);
+            // Solo agregar fechaFin si se proporciona y es válida
+            if (data.fechaFin) {
+                campeonatoData.fechaFin = new Date(data.fechaFin);
+            }
+
+            const campeonato = await tx.campeonato.create({
+                data: campeonatoData
+            });
+
+            // Si se proporcionan torneos, crearlos
+            if (data.torneos && data.torneos.length > 0) {
+                for (const torneo of data.torneos) {
+                    // Mapear categoria a tipoSorteo
+                    let tipoSorteo: string;
+                    switch (torneo.categoria) {
+                        case 'FASE_GRUPOS':
+                            tipoSorteo = 'GRUPOS';
+                            break;
+                        case 'ELIMINATORIA':
+                            tipoSorteo = 'BRACKET';
+                            break;
+                        case 'TODOS_CONTRA_TODOS':
+                            tipoSorteo = 'GRUPOS';
+                            break;
+                        default:
+                            tipoSorteo = 'BRACKET';
+                    }
+
+                    await tx.torneo.create({
+                        data: {
+                            campeonatoId: campeonato.id,
+                            disciplina: torneo.disciplina,
+                            categoria: torneo.categoria,
+                            genero: torneo.genero,
+                            costoInscripcion: torneo.costoInscripcion,
+                            tipoSorteo
+                        }
+                    });
+                }
+            }
+
+            return campeonato;
+        });
+
+        // Obtener el campeonato creado con sus torneos para retornar datos completos
+        const createdCampeonato = await prisma.campeonato.findUnique({
+            where: { id: result.id },
+            include: { torneos: true }
+        });
+
+        if (!createdCampeonato) {
+            return reply.code(500).send({ message: 'Error al obtener el campeonato creado' });
         }
 
-        const campeonato = await prisma.campeonato.create({
-            data: campeonatoData
-        });
-        return reply.code(201).send(campeonato);
+        // Convertir Decimal a Number para consistencia con el schema
+        const responseCallback = {
+            ...createdCampeonato,
+            torneos: createdCampeonato.torneos.map((t: any) => ({
+                ...t,
+                costoInscripcion: t.costoInscripcion ? parseFloat(t.costoInscripcion.toString()) : 0
+            }))
+        };
+
+        return reply.code(201).send(responseCallback);
     } catch (e: any) {
-        console.error('Error creating championship:', e);
-        return reply.code(500).send({ message: 'Error creating championship', error: e.message });
+        console.error('Error al crear campeonato:', e);
+        return reply.code(500).send({ message: 'Error al crear campeonato', error: e.message });
     }
 }
 
@@ -82,8 +139,8 @@ export async function getCampeonatosHandler(
         });
         return reply.send(formattedCampeonatos);
     } catch (e: any) {
-        console.error('Error fetching championships:', e);
-        return reply.code(500).send({ message: 'Error fetching championships', error: e.message });
+        console.error('Error al obtener campeonatos:', e);
+        return reply.code(500).send({ message: 'Error al obtener campeonatos', error: e.message });
     }
 }
 
@@ -94,7 +151,7 @@ export async function createTorneoHandler(
     const data = request.body;
 
     try {
-        // Map categoria to tipoSorteo for consistency
+        // Mapear categoria a tipoSorteo para consistencia
         let tipoSorteo: string;
         switch (data.categoria) {
             case 'FASE_GRUPOS':
@@ -104,7 +161,7 @@ export async function createTorneoHandler(
                 tipoSorteo = 'BRACKET';
                 break;
             case 'TODOS_CONTRA_TODOS':
-                tipoSorteo = 'GRUPOS'; // Todos contra todos uses groups logic
+                tipoSorteo = 'GRUPOS'; // Todos contra todos usa lógica de grupos
                 break;
             default:
                 tipoSorteo = 'BRACKET';
@@ -121,7 +178,7 @@ export async function createTorneoHandler(
         return reply.code(201).send(torneo);
     } catch (e) {
         request.log.error(e);
-        return reply.code(500).send({ message: 'Error creating tournament' });
+        return reply.code(500).send({ message: 'Error al crear torneo' });
     }
 }
 
@@ -150,9 +207,9 @@ export async function updateCampeonatoHandler(
     } catch (e: any) {
         request.log.error(e);
         if (e.code === 'P2025') {
-            return reply.code(404).send({ message: 'Championship not found' });
+            return reply.code(404).send({ message: 'Campeonato no encontrado' });
         }
-        return reply.code(500).send({ message: 'Error updating championship', error: e.message });
+        return reply.code(500).send({ message: 'Error al actualizar campeonato', error: e.message });
     }
 }
 
@@ -164,7 +221,7 @@ export async function updateTorneoHandler(
     const data = request.body;
 
     try {
-        // Map categoria to tipoSorteo if categoria is being updated
+        // Mapear categoria a tipoSorteo si categoria está siendo actualizada
         let updateData = { ...data };
         if (data.categoria) {
             let tipoSorteo: string;
@@ -206,15 +263,15 @@ export async function deleteCampeonatoHandler(
     try {
         const campeonatoId = Number(id);
 
-        // Get all tournaments in this championship
+        // Obtener todos los torneos en este campeonato
         const torneos = await prisma.torneo.findMany({
             where: { campeonatoId },
             select: { id: true }
         });
 
-        // Delete all associated data for each tournament
+        // Eliminar todos los datos asociados para cada torneo
         for (const torneo of torneos) {
-            // 1. Delete Streaming records associated with matches
+            // 1. Eliminar registros de Streaming asociados con partidos
             const partidos = await prisma.partido.findMany({
                 where: { torneoId: torneo.id },
                 select: { id: true }
@@ -227,12 +284,12 @@ export async function deleteCampeonatoHandler(
                 });
             }
 
-            // 2. Delete Matches
+            // 2. Eliminar Partidos
             await prisma.partido.deleteMany({
                 where: { torneoId: torneo.id }
             });
 
-            // 3. Delete Groups associated with team registrations
+            // 3. Eliminar Grupos asociados con inscripciones de equipos
             const inscripciones = await prisma.equipotorneo.findMany({
                 where: { torneoId: torneo.id },
                 select: { id: true }
@@ -245,23 +302,23 @@ export async function deleteCampeonatoHandler(
                 });
             }
 
-            // 4. Delete Payments associated with the tournament
+            // 4. Eliminar Pagos asociados con el torneo
             await prisma.validacionpago.deleteMany({
                 where: { torneoId: torneo.id }
             });
 
-            // 5. Delete Team Registrations
+            // 5. Eliminar Inscripciones de Equipos
             await prisma.equipotorneo.deleteMany({
                 where: { torneoId: torneo.id }
             });
         }
 
-        // Delete all tournaments
+        // Eliminar todos los torneos
         await prisma.torneo.deleteMany({
             where: { campeonatoId }
         });
 
-        // Finally delete the championship
+        // Finalmente eliminar el campeonato
         await prisma.campeonato.delete({
             where: { id: campeonatoId }
         });
@@ -287,10 +344,10 @@ export async function deleteTorneoHandler(
 ) {
     const { id } = request.params;
     try {
-        // First, delete all associated records to avoid foreign key constraints
+        // Primero, eliminar todos los registros asociados para evitar restricciones de clave foránea
         const torneoId = Number(id);
 
-        // 1. Delete Streaming records associated with matches
+        // 1. Eliminar registros de Streaming asociados con partidos
         const partidos = await prisma.partido.findMany({
             where: { torneoId },
             select: { id: true }
@@ -303,12 +360,12 @@ export async function deleteTorneoHandler(
             });
         }
 
-        // 2. Delete Matches
+        // 2. Eliminar Partidos
         await prisma.partido.deleteMany({
             where: { torneoId }
         });
 
-        // 3. Delete Groups associated with team registrations
+        // 3. Eliminar Grupos asociados con inscripciones de equipos
         const inscripciones = await prisma.equipotorneo.findMany({
             where: { torneoId },
             select: { id: true }
@@ -321,17 +378,17 @@ export async function deleteTorneoHandler(
             });
         }
 
-        // 4. Delete Payments associated with the tournament
+        // 4. Eliminar Pagos asociados con el torneo
         await prisma.validacionpago.deleteMany({
             where: { torneoId }
         });
 
-        // 5. Delete Team Registrations
+        // 5. Eliminar Inscripciones de Equipos
         await prisma.equipotorneo.deleteMany({
             where: { torneoId }
         });
 
-        // Now delete the tournament
+        // Ahora eliminar el torneo
         await prisma.torneo.delete({
             where: { id: torneoId }
         });
@@ -358,12 +415,17 @@ export async function generateDrawHandler(
     const { id } = request.params;
     const { type, settings } = request.body;
 
+    // TODO: Agregar 'force' al schema si se usa validación estricta. Por ahora asumiendo que está en settings o body si es flexible.
+    // La actualización previa del servicio esperaba 'force' dentro de settings o como argumento separado?
+    // Firma del servicio: generateDraw(torneoId, type, settings?: { ..., force?: boolean })
+    // Así que solo necesitamos pasarlo en settings.
+
     try {
         const result = await drawService.generateDraw(Number(id), type, settings);
         return reply.code(201).send(result);
     } catch (e: any) {
         request.log.error(e);
-        return reply.code(400).send({ message: e.message || 'Error generating draw' });
+        return reply.code(400).send({ message: e.message || 'Error al generar sorteo' });
     }
 }
 
@@ -376,22 +438,22 @@ export async function createTeamRegistrationHandler(
     const user = request.user as { id: number, rol: string };
 
     try {
-        // Verify ownership/permission
+        // Verificar propiedad/permiso
         if (user.rol !== 'ADMIN') {
             const team = await prisma.equipo.findUnique({
                 where: { id: equipoId }
             });
 
             if (!team) {
-                return reply.code(404).send({ message: 'Team not found' });
+                return reply.code(404).send({ message: 'Equipo no encontrado' });
             }
 
             if (team.capitanId !== user.id) {
-                return reply.code(403).send({ message: 'Only the team captain can register the team' });
+                return reply.code(403).send({ message: 'Solo el capitán del equipo puede inscribir el equipo' });
             }
         }
 
-        // Validation: Check if team is already registered
+        // Validación: Verificar si el equipo ya está inscrito
         const existing = await prisma.equipotorneo.findUnique({
             where: {
                 equipoId_torneoId: {
@@ -403,12 +465,12 @@ export async function createTeamRegistrationHandler(
 
         if (existing) {
             return reply.code(409).send({
-                message: 'Team already registered in this tournament',
+                message: 'Equipo ya inscrito en este torneo',
                 status: existing.estado
             });
         }
 
-        // Check tournament cost
+        // Verificar costo del torneo
         const torneo = await prisma.torneo.findUnique({
             where: { id: Number(id) }
         });
@@ -434,9 +496,9 @@ export async function createTeamRegistrationHandler(
         return reply.code(201).send(inscripcion);
     } catch (e: any) {
         if (e.code === 'P2003') {
-            return reply.code(400).send({ message: 'Invalid team or tournament ID' });
+            return reply.code(400).send({ message: 'ID de equipo o torneo inválido' });
         }
-        return reply.code(500).send({ message: 'Error registering team' });
+        return reply.code(500).send({ message: 'Error al inscribir equipo' });
     }
 }
 
@@ -450,6 +512,6 @@ export async function promoteToKnockoutHandler(
         return reply.code(201).send(result);
     } catch (e: any) {
         request.log.error(e);
-        return reply.code(400).send({ message: e.message || 'Error promoting to knockout stage' });
+        return reply.code(400).send({ message: e.message || 'Error al promover a fase eliminatoria' });
     }
 }

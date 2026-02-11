@@ -12,16 +12,16 @@ export async function createPaymentHandler(
     const { equipoId, torneoId, monto, comprobanteUrl, observacion } = request.body;
     const user = request.user as { id: number; rol: any };
 
-    // Verify team ownership if not admin
+    // Verificar propiedad del equipo si no es admin
     if (user.rol !== 'ADMIN') {
         const team = await prisma.equipo.findUnique({
             where: { id: equipoId }
         });
         if (!team) {
-            return reply.code(404).send({ message: 'Team not found' });
+            return reply.code(404).send({ message: 'Equipo no encontrado' });
         }
         if (team.capitanId !== user.id) {
-            return reply.code(403).send({ message: 'Only the captain can upload payments for this team' });
+            return reply.code(403).send({ message: 'Solo el capitán puede subir pagos para este equipo' });
         }
     }
 
@@ -39,8 +39,8 @@ export async function createPaymentHandler(
             }
         });
 
-        // Update enrollment status to indicate payment is under review
-        // Only if enrollment exists
+        // Actualizar estado de inscripción para indicar que el pago está en revisión
+        // Solo si la inscripción existe
         const enrollment = await prisma.equipotorneo.findFirst({
             where: {
                 equipoId,
@@ -48,22 +48,30 @@ export async function createPaymentHandler(
             }
         });
 
-        if (enrollment) {
-            await prisma.equipotorneo.updateMany({
-                where: {
-                    equipoId,
-                    torneoId
-                },
-                data: {
-                    estado: 'PAGO_EN_REVISION'
-                }
-            });
-        }
+        await prisma.equipotorneo.updateMany({
+            where: {
+                equipoId,
+                torneoId
+            },
+            data: {
+                estado: 'PAGO_EN_REVISION'
+            }
+        });
+
+
+        // Notificar a Administradores
+        const { notifyAdmins } = await import('../../services/notification.service.js');
+        const teamName = await prisma.equipo.findUnique({ where: { id: equipoId }, select: { nombre: true } });
+        await notifyAdmins(
+            `Nuevo pago subido por el equipo ${teamName?.nombre || 'Desconocido'} por $${monto}.`,
+            'INFO',
+            `/dashboard?tab=payments&paymentId=${payment.id}`
+        );
 
         return reply.code(201).send(payment);
     } catch (e) {
         console.error(e);
-        return reply.code(500).send({ message: 'Error creating payment' });
+        return reply.code(500).send({ message: 'Error al crear pago' });
     }
 }
 
@@ -127,9 +135,9 @@ export async function getPendingPaymentsHandler(
     }
 
     try {
-        console.log('[DEBUG] Fetching pending payments for user:', user);
-        console.log('[DEBUG] Prisma client available:', !!prisma);
-        console.log('[DEBUG] ValidacionPago model available:', !!prisma.validacionpago);
+        console.log('[DEBUG] Obteniendo pagos pendientes para usuario:', user);
+        console.log('[DEBUG] Cliente Prisma disponible:', !!prisma);
+        console.log('[DEBUG] Modelo ValidacionPago disponible:', !!prisma.validacionpago);
 
         const payments = await prisma.validacionpago.findMany({
             where: {
@@ -153,7 +161,7 @@ export async function getPendingPaymentsHandler(
 
         return reply.send(payments);
     } catch (e: any) {
-        console.error('Error fetching pending payments:', e);
+        console.error('Error al obtener pagos pendientes:', e);
         return reply.code(500).send({ message: `Error al obtener pagos pendientes: ${e.message}` });
     }
 }
@@ -264,7 +272,7 @@ export async function validatePaymentHandler(
             }
         } as any);
 
-        // Update team registration status if linked to tournament
+        // Actualizar estado de inscripción del equipo si está vinculado a un torneo
         if (payment.torneoId) {
             let registrationStatus = 'PENDIENTE_PAGO';
             if (estado === 'VALIDADO') {
@@ -285,7 +293,7 @@ export async function validatePaymentHandler(
             });
         }
 
-        // Fetch tournament details for notification
+        // Obtener detalles del torneo para la notificación
         const tournament = payment.torneoId ? await prisma.torneo.findUnique({
             where: { id: payment.torneoId },
             include: { campeonato: true }
@@ -295,10 +303,10 @@ export async function validatePaymentHandler(
             ? `${tournament.campeonato.nombre} - ${tournament.categoria}`
             : 'Torneo';
 
-        // Send notifications
+        // Enviar notificaciones
         const paymentWithRelations = updatedPayment as any;
 
-        // Notify payer
+        // Notificar al pagador
         if (paymentWithRelations.usuarioPagoId) {
             const user = paymentWithRelations.usuarioPago;
             if (user && user.email) {
@@ -318,7 +326,7 @@ export async function validatePaymentHandler(
             }
         }
 
-        // Notify Captain (if different from payer)
+        // Notificar al Capitán (si es diferente del pagador)
         if (paymentWithRelations.equipoId) {
             const team = await prisma.equipo.findUnique({
                 where: { id: paymentWithRelations.equipoId },
@@ -337,7 +345,7 @@ export async function validatePaymentHandler(
 
         return reply.send(updatedPayment);
     } catch (e: any) {
-        console.error('Error validating payment:', e);
+        console.error('Error al validar pago:', e);
         return reply.code(500).send({ message: 'Error al validar pago' });
     }
 }

@@ -10,6 +10,7 @@ export interface CreateTeamRequest {
     disciplina?: string;
     capitanId?: number;
     codigoAcceso?: string;
+    genero?: string;
 }
 
 export const teamsService = {

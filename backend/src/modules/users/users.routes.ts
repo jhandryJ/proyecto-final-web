@@ -16,7 +16,7 @@ export async function userRoutes(app: FastifyInstance) {
         privateApp.withTypeProvider<ZodTypeProvider>().get('/', {
             schema: {
                 tags: ['Usuarios'],
-                summary: 'List all users (with RLS)',
+                summary: 'Listar todos los usuarios (con RLS)',
                 security: [{ bearerAuth: [] }],
                 response: {
                     200: z.array(userResponseSchema)
@@ -28,7 +28,7 @@ export async function userRoutes(app: FastifyInstance) {
         privateApp.withTypeProvider<ZodTypeProvider>().get('/:id', {
             schema: {
                 tags: ['Usuarios'],
-                summary: 'Get user details (with RLS)',
+                summary: 'Obtener detalles del usuario (con RLS)',
                 security: [{ bearerAuth: [] }],
                 params: z.object({ id: z.string() }),
                 response: {

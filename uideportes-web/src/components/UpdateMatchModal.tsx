@@ -57,7 +57,7 @@ export const UpdateMatchModal: React.FC<UpdateMatchModalProps> = ({
             });
             onClose();
         } catch (error) {
-            console.error('Failed to update match', error);
+            console.error('Fallo al actualizar partido', error);
         } finally {
             setLoading(false);
         }

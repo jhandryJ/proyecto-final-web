@@ -1,7 +1,7 @@
-import { AppBar, Toolbar, Box, Typography, Container, IconButton, Button } from '@mui/material';
-import { Menu as MenuIcon, Logout as LogoutIcon } from '@mui/icons-material';
-import { useNavigate } from 'react-router-dom';
+import { AppBar, Toolbar, Box, Typography, Container, IconButton } from '@mui/material';
+import { Menu as MenuIcon } from '@mui/icons-material';
 import { useAuth } from '../context/AuthContext';
+import { NotificationMenu } from './NotificationMenu';
 import logo from '../assets/logo.png';
 
 interface HeaderProps {
@@ -9,13 +9,7 @@ interface HeaderProps {
 }
 
 export function Header({ onMenuClick }: HeaderProps) {
-    const navigate = useNavigate();
-    const { logout, user } = useAuth();
-
-    const handleLogout = () => {
-        logout();
-        navigate('/login');
-    };
+    const { user } = useAuth();
     return (
         <AppBar position="sticky" sx={{ background: 'linear-gradient(135deg, #004B9B 0%, #0066CC 100%)' }}>
             <Container maxWidth="xl">
@@ -51,6 +45,7 @@ export function Header({ onMenuClick }: HeaderProps) {
                     </Box>
 
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                        <NotificationMenu />
                         <Box sx={{ textAlign: 'right', display: { xs: 'none', md: 'block' } }}>
                             <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.9)', fontWeight: 500 }}>
                                 Universidad Internacional del Ecuador
@@ -61,20 +56,6 @@ export function Header({ onMenuClick }: HeaderProps) {
                                 </Typography>
                             )}
                         </Box>
-                        <Button
-                            color="inherit"
-                            startIcon={<LogoutIcon />}
-                            onClick={handleLogout}
-                            sx={{
-                                borderRadius: 2,
-                                textTransform: 'none',
-                                '&:hover': {
-                                    backgroundColor: 'rgba(255, 255, 255, 0.1)'
-                                }
-                            }}
-                        >
-                            Cerrar Sesión
-                        </Button>
                     </Box>
                 </Toolbar>
             </Container>

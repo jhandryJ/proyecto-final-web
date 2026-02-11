@@ -2,7 +2,7 @@ import { prisma } from '../../utils/prisma.js';
 
 export class DrawService {
 
-    async generateDraw(torneoId: number, type: 'BRACKET' | 'GRUPOS', settings?: { groupsCount?: number, manualAssignments?: Record<string, number[]> }) {
+    async generateDraw(torneoId: number, type: 'BRACKET' | 'GRUPOS', settings?: { groupsCount?: number, manualAssignments?: Record<string, number[]>, force?: boolean }) {
         // 1. Validar equipos
         const inscripciones = await prisma.equipotorneo.findMany({
             where: {
@@ -13,237 +13,264 @@ export class DrawService {
         });
 
         if (inscripciones.length < 2) {
-            throw new Error('Not enough teams to generate a draw (min 2)');
+            throw new Error('No hay suficientes equipos para generar el sorteo (mínimo 2)');
         }
 
-        // Limpiar sorteos previos (Opcional: Por ahora asumimos que si se llama es para sobrescribir o generar)
-        // Cuidado: Borrar partidos existentes borraría historial. Mejor lanzar error si ya existen.
+        // Limpiar sorteos previos si se fuerza
         const existingMatches = await prisma.partido.count({ where: { torneoId } });
         if (existingMatches > 0) {
-            throw new Error('Draw already exists. Clear matches first (not implemented safely yet).');
+            if (settings?.force) {
+                // Delete existing matches and related data
+                const matches = await prisma.partido.findMany({ where: { torneoId }, select: { id: true } });
+                const matchIds = matches.map(m => m.id);
+
+                await prisma.streaming.deleteMany({ where: { partidoId: { in: matchIds } } });
+                await prisma.partido.deleteMany({ where: { torneoId } });
+
+                // If switching types, we might need to clean up groups too, but for now we assume same type or clean slate
+                if (type === 'BRACKET') {
+                    // If we were in groups, maybe clean groups? 
+                    // Let's safe clean groups just in case if shifting to pure bracket from scratch
+                    const inscripcionIds = inscripciones.map(i => i.id);
+                    await prisma.grupo.deleteMany({ where: { equipoTorneoId: { in: inscripcionIds } } });
+                }
+            } else {
+                throw new Error('El sorteo ya existe. Use la opción de regenerar para sobrescribirlo.');
+            }
         }
 
         if (type === 'BRACKET') {
             return this.generateBracket(torneoId, inscripciones);
         } else if (type === 'GRUPOS') {
-            if (!settings?.groupsCount) throw new Error('groupsCount is required for GRUPOS');
+            if (!settings?.groupsCount) throw new Error('groupsCount es requerido para GRUPOS');
             return this.generateGroups(torneoId, inscripciones, settings.groupsCount, settings.manualAssignments);
         }
     }
 
     async generateKnockoutFromGroups(torneoId: number) {
-        // 1. Obtener grupos y partidos de la fase de grupos
-        const matches = await prisma.partido.findMany({
-            where: { torneoId: torneoId, fase: 'GRUPOS', estado: 'FINALIZADO' },
-            include: { equipoLocal: true, equipoVisitante: true }
-        });
-
-        const groups = await prisma.grupo.findMany({
-            where: { equipoTorneo: { torneoId: torneoId } },
-            include: { equipoTorneo: { include: { equipo: true } } }
-        });
-
-        if (groups.length === 0) {
-            throw new Error('No groups found for this tournament');
-        }
-
-        // 2. Calcular tabla de posiciones por grupo
-        const standings: Record<string, any[]> = {};
-
-        // Inicializar stats
-        groups.forEach(g => {
-            if (!standings[g.nombre]) standings[g.nombre] = [];
-            // Evitar duplicados si el grupo tiene varias entradas (una por equipo)
-            if (!standings[g.nombre].find(t => t.equipoId === g.equipoTorneo.equipoId)) {
-                standings[g.nombre].push({
-                    equipoId: g.equipoTorneo.equipoId,
-                    equipo: g.equipoTorneo.equipo,
-                    points: 0,
-                    gf: 0,
-                    gc: 0,
-                    gd: 0
-                });
-            }
-        });
-
-        // Procesar partidos
-        matches.forEach(m => {
-            const team1Stats = this.findTeamStats(standings, m.equipoLocalId!);
-            const team2Stats = this.findTeamStats(standings, m.equipoVisitanteId!);
-
-            if (team1Stats && team2Stats) {
-                team1Stats.gf += m.marcadorLocal || 0;
-                team1Stats.gc += m.marcadorVisitante || 0;
-                team1Stats.gd = team1Stats.gf - team1Stats.gc;
-
-                team2Stats.gf += m.marcadorVisitante || 0;
-                team2Stats.gc += m.marcadorLocal || 0;
-                team2Stats.gd = team2Stats.gf - team2Stats.gc;
-
-                if ((m.marcadorLocal || 0) > (m.marcadorVisitante || 0)) {
-                    team1Stats.points += 3;
-                } else if ((m.marcadorVisitante || 0) > (m.marcadorLocal || 0)) {
-                    team2Stats.points += 3;
-                } else {
-                    team1Stats.points += 1;
-                    team2Stats.points += 1;
+        // 1. Get all groups for this tournament
+        const grupos = await prisma.grupo.findMany({
+            where: {
+                equipoTorneo: {
+                    torneoId
+                }
+            },
+            include: {
+                equipoTorneo: {
+                    include: {
+                        equipo: true
+                    }
                 }
             }
         });
 
-        // 3. Ordenar y seleccionar clasificados
+        if (grupos.length === 0) {
+            throw new Error('No hay grupos configurados para este torneo');
+        }
+
+        // 2. Get standings to determine top teams from each group
+        const groupNames = [...new Set(grupos.map(g => g.nombre))];
         const qualifiedTeams: any[] = [];
-        const groupNames = Object.keys(standings).sort();
 
-        // Estrategia de cruces: 
-        // Si hay 2 grupos (A, B): 1A vs 2B, 1B vs 2A -> Semis
-        // Si hay 4 grupos (A, B, C, D): 1A vs 2B, 1C vs 2D, 1B vs 2A, 1D vs 2C -> Cuartos
+        for (const groupName of groupNames) {
+            const groupTeams = grupos.filter(g => g.nombre === groupName);
 
-        const firstPlace: any[] = [];
-        const secondPlace: any[] = [];
-
-        groupNames.forEach(groupName => {
-            // Sort: Points DESC, GD DESC, GF DESC
-            standings[groupName].sort((a, b) => {
-                if (b.points !== a.points) return b.points - a.points;
-                if (b.gd !== a.gd) return b.gd - a.gd;
-                return b.gf - a.gf;
+            // Get matches for this group to calculate standings
+            const teamIds = groupTeams.map(g => g.equipoTorneo.equipoId);
+            const matches = await prisma.partido.findMany({
+                where: {
+                    torneoId,
+                    fase: 'GRUPOS',
+                    llave: `G${groupName}`,
+                    estado: 'FINALIZADO'
+                }
             });
 
-            // Take top 2
-            if (standings[groupName].length >= 1) firstPlace.push({ ...standings[groupName][0], group: groupName });
-            if (standings[groupName].length >= 2) secondPlace.push({ ...standings[groupName][1], group: groupName });
-        });
+            // Calculate standings
+            const standings = new Map<number, { puntos: number, gf: number, gc: number, dif: number }>();
 
-        if (firstPlace.length !== secondPlace.length) {
-            // Manejar caso impar o incompleto? Por ahora asumimos estructura completa.
-        }
-
-        // Armar lista ordenada para el bracket seed
-        // El metodo generateBracket recibe una lista plana. Si queremos forzar cruces, 
-        // necesitamos pasarle los equipos en un orden especifico y modificar generateBracket 
-        // para que NO haga shuffle si se indica.
-
-        const seededTeams = [];
-        if (groupNames.length === 2) {
-            // Semis: 1A vs 2B, 1B vs 2A
-            // generateBracket (reverse loop): Final (idx 0) -> Semis (idx 1)
-            // En Semis (idx 1), el loop itera j=0, j=1.
-            // j=0 toma teams[0] vs teams[1]
-            // j=1 toma teams[2] vs teams[3]
-            // Queremos:
-            // Match 1: 1A (idx 0) vs 2B (idx 1)
-            // Match 2: 1B (idx 2) vs 2A (idx 3)
-            if (firstPlace.length >= 2 && secondPlace.length >= 2) {
-                seededTeams.push(firstPlace[0]); // 1A
-                seededTeams.push(secondPlace[1]); // 2B
-                seededTeams.push(firstPlace[1]); // 1B
-                seededTeams.push(secondPlace[0]); // 2A
+            for (const teamId of teamIds) {
+                standings.set(teamId, { puntos: 0, gf: 0, gc: 0, dif: 0 });
             }
-        } else if (groupNames.length === 4) {
-            // Cuartos: 
-            // 1A vs 2B
-            // 1C vs 2D
-            // 1B vs 2A
-            // 1D vs 2C
-            // Orden para generateBracket (loop j=0..3):
-            // j=0: t[0] vs t[1] -> 1A vs 2B
-            // j=1: t[2] vs t[3] -> 1C vs 2D
-            // j=2: t[4] vs t[5] -> 1B vs 2A (o cruce opuesto para final)
-            // j=3: t[6] vs t[7] -> 1D vs 2C
 
-            // Nota: Para que 1A/2B se cruce con 1C/2D en semis, deben estar en llaves adyacentes?
-            // generateBracket logic:
-            // Semi 1 alimenta de Cuartos 0 y Cuartos 1.
-            // Semi 2 alimenta de Cuartos 2 y Cuartos 3.
-            // Entonces Ganador(1A-2B) jugará vs Ganador(1C-2D). Correcto.
+            for (const match of matches) {
+                if (match.equipoLocalId && match.equipoVisitanteId &&
+                    match.marcadorLocal !== null && match.marcadorVisitante !== null) {
 
-            seededTeams.push(firstPlace[0]); // 1A
-            seededTeams.push(secondPlace[1]); // 2B (Match 1)
+                    const localStats = standings.get(match.equipoLocalId)!;
+                    const visitanteStats = standings.get(match.equipoVisitanteId)!;
 
-            seededTeams.push(firstPlace[2]); // 1C
-            seededTeams.push(secondPlace[3]); // 2D (Match 2)
+                    localStats.gf += match.marcadorLocal;
+                    localStats.gc += match.marcadorVisitante;
+                    visitanteStats.gf += match.marcadorVisitante;
+                    visitanteStats.gc += match.marcadorLocal;
 
-            seededTeams.push(firstPlace[1]); // 1B
-            seededTeams.push(secondPlace[0]); // 2A (Match 3)
+                    if (match.marcadorLocal > match.marcadorVisitante) {
+                        localStats.puntos += 3;
+                    } else if (match.marcadorLocal < match.marcadorVisitante) {
+                        visitanteStats.puntos += 3;
+                    } else {
+                        localStats.puntos += 1;
+                        visitanteStats.puntos += 1;
+                    }
 
-            seededTeams.push(firstPlace[3]); // 1D
-            seededTeams.push(secondPlace[2]); // 2C (Match 4)
-        } else {
-            // Fallback: Random Top 2
-            seededTeams.push(...firstPlace, ...secondPlace);
+                    localStats.dif = localStats.gf - localStats.gc;
+                    visitanteStats.dif = visitanteStats.gf - visitanteStats.gc;
+                }
+            }
+
+            // Sort teams by standings (puntos, dif, gf)
+            const sortedTeams = groupTeams.sort((a, b) => {
+                const statsA = standings.get(a.equipoTorneo.equipoId)!;
+                const statsB = standings.get(b.equipoTorneo.equipoId)!;
+
+                if (statsB.puntos !== statsA.puntos) return statsB.puntos - statsA.puntos;
+                if (statsB.dif !== statsA.dif) return statsB.dif - statsA.dif;
+                return statsB.gf - statsA.gf;
+            });
+
+            // Take top 2 teams from each group (or top 1 if you prefer)
+            const teamsToPromote = sortedTeams.slice(0, 2);
+            qualifiedTeams.push(...teamsToPromote.map(t => ({
+                id: t.equipoTorneo.equipoId,
+                equipoId: t.equipoTorneo.equipoId,
+                equipo: t.equipoTorneo.equipo
+            })));
         }
 
-        // Llamar a generateBracket con flag de 'no shuffle'
-        // Necesitamos modificar generateBracket para aceptar esta opción
-        return this.generateBracket(torneoId, seededTeams, true);
-    }
-
-    private findTeamStats(standings: Record<string, any[]>, equipoId: number) {
-        for (const group in standings) {
-            const found = standings[group].find((t: any) => t.equipoId === equipoId);
-            if (found) return found;
+        if (qualifiedTeams.length < 2) {
+            throw new Error('No hay suficientes equipos clasificados para generar la fase eliminatoria');
         }
-        return null;
+
+        // 3. Generate bracket with qualified teams (skip shuffle to maintain seeding)
+        return this.generateBracket(torneoId, qualifiedTeams, true);
     }
 
     private async generateBracket(torneoId: number, teams: any[], skipShuffle: boolean = false) {
-        // Shuffle only if not skipped
-        const shuffled = skipShuffle ? [...teams] : [...teams].sort(() => 0.5 - Math.random());
+        // 1. Prepara equipos
+        let seededTeams = skipShuffle ? [...teams] : [...teams].sort(() => 0.5 - Math.random());
+        const count = seededTeams.length;
 
-        // Determinar fase inicial y estructura del árbol
-        const count = shuffled.length;
-        let phases: { name: string, matches: number }[] = [];
-
-        if (count <= 2) {
-            phases = [{ name: 'FINAL', matches: 1 }];
-        } else if (count <= 4) {
-            phases = [{ name: 'SEMIFINAL', matches: 2 }, { name: 'FINAL', matches: 1 }];
-        } else if (count <= 8) {
-            phases = [{ name: 'CUARTOS', matches: 4 }, { name: 'SEMIFINAL', matches: 2 }, { name: 'FINAL', matches: 1 }];
-        } else if (count <= 16) {
-            phases = [{ name: 'OCTAVOS', matches: 8 }, { name: 'CUARTOS', matches: 4 }, { name: 'SEMIFINAL', matches: 2 }, { name: 'FINAL', matches: 1 }];
+        // 2. Determinar tamaño del bracket (potencia de 2)
+        let bracketSize = 2;
+        while (bracketSize < count) {
+            bracketSize *= 2;
         }
 
+        // 3. Calcular Byes
+        const byesCount = bracketSize - count;
+        const matchesCount = count - byesCount; // Partidos reales en primera ronda = (count - byes) / 2 is incorrect math.
+        // Logic:
+        // Round 1 has 'bracketSize / 2' slots.
+        // We have 'byesCount' matches that are "Team vs Bye".
+        // We have '(bracketSize / 2) - byesCount' matches that are "Team vs Team".
+
+        // Example: 6 Teams. Bracket Size 8. Byes = 2.
+        // Slots = 4.
+        // Matches vs Bye = 2.
+        // Matches H2H = 4 - 2 = 2.
+        // Total Teams used in vs Bye = 2 * 1 = 2.
+        // Total Teams used in H2H = 2 * 2 = 4.
+        // Total Teams = 2 + 4 = 6. Correct.
+
+        // 4. Distribuir Byes equilibradamente
+        // Estrategia: Intercalar partidos H2H y Solo (Bye) para que en la siguiente ronda
+        // no se crucen dos ganadores de Bye si es posible evitarlo, o distribuidos.
+        // Simplificación: Poner los Byes en los primeros seeds o dispersos.
+        // Mejor: Crear lista de "Slots" de primera ronda.
+
+        const totalSlots = bracketSize / 2; // Matches in first round (including byes)
+        const slots: ('H2H' | 'BYE')[] = [];
+
+        const h2hMatches = totalSlots - byesCount;
+
+        // Fill slots array
+        for (let i = 0; i < byesCount; i++) slots.push('BYE');
+        for (let i = 0; i < h2hMatches; i++) slots.push('H2H');
+
+        // Shuffle slots to distribute byes randomly/evenly?
+        // Or keep them fixed to reward higher seeds if seeded? (Here random).
+        // Let's standard distribute: top and bottom separate.
+        // For simplicity and "fairness" in random draw, shuffle slots.
+        // But to ensure flow, maybe distribute 1 Bye, 1 H2H...
+        // Let's just shuffle the slots configuration.
+        slots.sort(() => 0.5 - Math.random());
+
+        // 5. Asignar equipos a slots
+        // Necesitamos tomar equipos de 'seededTeams'.
+        const firstRoundMatchesConfig = [];
+        let teamIdx = 0;
+
+        for (const slotType of slots) {
+            if (slotType === 'BYE') {
+                // Take 1 team
+                if (teamIdx < count) {
+                    firstRoundMatchesConfig.push({
+                        local: seededTeams[teamIdx++],
+                        visitante: null // BYE
+                    });
+                }
+            } else {
+                // Take 2 teams
+                if (teamIdx + 1 < count) {
+                    firstRoundMatchesConfig.push({
+                        local: seededTeams[teamIdx++],
+                        visitante: seededTeams[teamIdx++]
+                    });
+                }
+            }
+        }
+
+        // 6. Generar fases
+        let phases: { name: string, matches: number }[] = [];
+        if (bracketSize === 2) phases = [{ name: 'FINAL', matches: 1 }];
+        else if (bracketSize === 4) phases = [{ name: 'SEMIFINAL', matches: 2 }, { name: 'FINAL', matches: 1 }];
+        else if (bracketSize === 8) phases = [{ name: 'CUARTOS', matches: 4 }, { name: 'SEMIFINAL', matches: 2 }, { name: 'FINAL', matches: 1 }];
+        else if (bracketSize === 16) phases = [{ name: 'OCTAVOS', matches: 8 }, { name: 'CUARTOS', matches: 4 }, { name: 'SEMIFINAL', matches: 2 }, { name: 'FINAL', matches: 1 }];
+        else if (bracketSize === 32) phases = [{ name: 'DIECISEISAVOS', matches: 16 }, { name: 'OCTAVOS', matches: 8 }, { name: 'CUARTOS', matches: 4 }, { name: 'SEMIFINAL', matches: 2 }, { name: 'FINAL', matches: 1 }];
+
         const allMatches = [];
-        let previousPhaseMatches: any[] = [];
-        let matchCounter = 1;
-
-        // Iterar por fases para crear partidos y enlazarlos
-        // La fase 0 es la primera (ej. Octavos), la última es la Final
-
-        // Estrategia: Crear todos los objetos de partido primero, asignando IDs temporales o manejando índices
-        // Pero Prisma necesita crear para tener IDs reales si usamos autoincrement.
-        // O podemos calcular índices relativos.
-        // Dado que 'siguientePartidoId' es una FK a la misma tabla, necesitamos que el partido siguiente exista O
-        // crear primero los finales y luego ir hacia atrás.
-        // Ir hacia atrás (Final -> Semis -> Cuartos) permite tener el ID del siguiente partido.
-
-        const reversedPhases = [...phases].reverse(); // Final, Semi, Cuartos...
-        let nextRoundMatches: any[] = []; // Partidos de la ronda siguiente (ej. Final) para enlazar
+        let nextRoundMatches: any[] = [];
+        const reversedPhases = [...phases].reverse(); // Final -> Semis -> ...
 
         for (let i = 0; i < reversedPhases.length; i++) {
             const phase = reversedPhases[i];
             const currentRoundMatches = [];
 
             for (let j = 0; j < phase.matches; j++) {
-                const isFinal = i === 0;
-                const nextMatchIndex = Math.floor(j / 2); // 0, 1 -> 0; 2, 3 -> 1
+                const nextMatchIndex = Math.floor(j / 2);
                 const nextMatchSlot = j % 2 === 0 ? 'LOCAL' : 'VISITANTE';
+                const nextMatch = nextRoundMatches.length > 0 ? nextRoundMatches[nextMatchIndex] : null;
 
-                const matchId = matchCounter++; // ID temporal/lógico para tracking interno si fuera necesario
-
-                // Si es la ronda inicial (ultima en este loop invertido), asignamos equipos
                 let equipoLocalId = null;
                 let equipoVisitanteId = null;
+                let estadoPartido = 'PROGRAMADO';
+                let marcadorLocal = null;
+                let marcadorVisitante = null;
 
-                // Si estamos en la última fase del loop (que es la primera real, ej. Octavos)
+                // Si es la primera ronda (la última del loop inverso)
+                // Usamos la config generada
                 if (i === reversedPhases.length - 1) {
-                    equipoLocalId = shuffled[j * 2] ? shuffled[j * 2].equipoId : null;
-                    equipoVisitanteId = shuffled[j * 2 + 1] ? shuffled[j * 2 + 1].equipoId : null;
-                }
+                    // El array firstRoundMatchesConfig tiene 'phase.matches' elementos?
+                    // Sí, porque totalSlots = bracketSize / 2 = phase.matches de la primera ronda.
+                    // Pero ojo: el orden de firstRoundMatchesConfig puede no coincidir con el índice j 
+                    // si queremos una estructura de árbol específica (semillas).
+                    // Como es random, podemos tomar directo idx j.
+                    const matchConfig = firstRoundMatchesConfig[j];
+                    if (matchConfig) {
+                        equipoLocalId = matchConfig.local ? (matchConfig.local.equipoId || matchConfig.local.id) : null; // Handle both Enrollment objects and direct Team objects (if promoted from groups)
+                        equipoVisitanteId = matchConfig.visitante ? (matchConfig.visitante.equipoId || matchConfig.visitante.id) : null;
 
-                const nextMatch = nextRoundMatches.length > 0 ? nextRoundMatches[nextMatchIndex] : null;
+                        // Si es BYE (visitante null), el partido se da por finalizado y pasa el local
+                        if (equipoLocalId && !equipoVisitanteId) {
+                            estadoPartido = 'FINALIZADO';
+                            marcadorLocal = 3;
+                            marcadorVisitante = 0;
+                            // Nota: La actualización del siguiente partido se hará después de crear este,
+                            // o aquí mismo si ya tenemos el ID del siguiente (que sí lo tenemos porque vamos en reversa).
+                        }
+                    }
+                }
 
                 const partido = await prisma.partido.create({
                     data: {
@@ -251,65 +278,45 @@ export class DrawService {
                         equipoLocalId,
                         equipoVisitanteId,
                         fase: phase.name,
-                        llave: `${phase.name.substring(0, 1)}${j + 1}`,
-                        fechaHora: new Date(), // Placeholder
-                        estado: 'PROGRAMADO',
+                        llave: `${phase.name.substring(0, 1)}${j + 1}`, // Q1, Q2, etc.
+                        fechaHora: new Date(),
+                        estado: estadoPartido,
+                        marcadorLocal,
+                        marcadorVisitante,
                         siguientePartidoId: nextMatch ? nextMatch.id : null,
                         siguienteSlot: nextMatch ? nextMatchSlot : null
                     } as any
                 });
+
                 currentRoundMatches.push(partido);
                 allMatches.push(partido);
 
-                // Handle BYE (Automatic Advancement for uneven teams)
-                // If there is a Local team but no Visitor, and there is a next match
-                // start_lint_fix: a99338e7-a3de-4854-abf6-412d463f5aca
-                if (equipoLocalId && !equipoVisitanteId && (partido as any).siguientePartidoId && (partido as any).siguienteSlot) {
-                    // 1. Advance the team to the next match
+                // Auto-advance logic for BYEs immediately
+                if (estadoPartido === 'FINALIZADO' && nextMatch && equipoLocalId) {
                     const updateData: any = {};
-                    if ((partido as any).siguienteSlot === 'LOCAL') {
-                        updateData.equipoLocalId = equipoLocalId;
-                    } else if ((partido as any).siguienteSlot === 'VISITANTE') {
-                        updateData.equipoVisitanteId = equipoLocalId;
-                    }
+                    if (nextMatchSlot === 'LOCAL') updateData.equipoLocalId = equipoLocalId;
+                    else updateData.equipoVisitanteId = equipoLocalId;
 
+                    // Update the next match in DB
                     await prisma.partido.update({
-                        where: { id: (partido as any).siguientePartidoId },
+                        where: { id: nextMatch.id },
                         data: updateData
                     });
 
-                    // 2. Mark current match as Finalized (Walkover)
-                    // We can use a special score or just status
-                    await prisma.partido.update({
-                        where: { id: partido.id },
-                        data: {
-                            estado: 'FINALIZADO',
-                            marcadorLocal: 3, // Convention for walkover? Or just keep 0-0 but winner logic handles it?
-                            marcadorVisitante: 0 // Controller logic uses scores, but here we bypassed controller.
-                        }
-                    });
+                    // Update the nextMatch object in memory for next iterations (though we only go up, so maybe not strictly needed for logic but good for consistency)
+                    if (nextMatchSlot === 'LOCAL') nextMatch.equipoLocalId = equipoLocalId;
+                    else nextMatch.equipoVisitanteId = equipoLocalId;
                 }
             }
             nextRoundMatches = currentRoundMatches;
         }
-
-        // Cleanup: Si había 'Bye's (equipos sin oponente en ronda 1), idealmente avanzaríamos automáticamente.
-        // Por simplicidad del MVP, el admin tendrá que marcar el partido.
-
-        // Actualizar torneo y cambiar formato a ELIMINATORIA/KNOCKOUT para que el frontend lo reconozca
-        // O mantener FASE_GRUPOS pero indicar que ya hay fase final?
-        // El frontend usa 'knockout' para mostrar el bracket. Si cambiamos el tipoSorteo a BRACKET, 
-        // el frontend podria perder la vista de grupos si no lo manejamos bien.
-        // Pero el user quiere ver ambas.
-        // En TournamentDetailsModal, chequeamos 'format' (que viene de categoria o tipoSorteo).
-        // Si cambiamos tipoSorteo a 'BRACKET', el modal mostrará Bracket por defecto pero tenemos pestañas.
 
         await prisma.torneo.update({
             where: { id: torneoId },
             data: { tipoSorteo: 'BRACKET' } as any
         });
 
-        return { message: 'Bracket generated', matchesCreated: allMatches.length };
+        return { message: 'Llaves generadas exitosamente', matchesCreated: allMatches.length };
     }
 
     private async generateGroups(torneoId: number, teams: any[], groupsCount: number, manualAssignments?: Record<string, number[]>) {

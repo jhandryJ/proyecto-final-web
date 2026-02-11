@@ -307,6 +307,24 @@ export function TournamentDetailsModal({
                                     </Typography>
                                 </Box>
                             )}
+
+                            {/* Regenerate Button for existing brackets */}
+                            {activeTab === 'bracket' && tournament.matchups && tournament.matchups.length > 0 && (
+                                <Box sx={{ p: 2, borderTop: 1, borderColor: 'divider', display: 'flex', justifyContent: 'flex-end' }}>
+                                    <Button
+                                        variant="outlined"
+                                        color="warning"
+                                        startIcon={<RestartAltIcon />}
+                                        onClick={() => {
+                                            if (window.confirm('¿Estás seguro de que deseas regenerar las llaves? SE BORRARÁN TODOS LOS PROGRESOS Y RESULTADOS ACTUALES.')) {
+                                                onDrawMatchups(tournament.id, { force: true });
+                                            }
+                                        }}
+                                    >
+                                        Regenerar Llaves
+                                    </Button>
+                                </Box>
+                            )}
                         </Box>
                     )
                 ) : drawStep === 1 ? (

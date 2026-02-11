@@ -20,12 +20,13 @@ import {
     IconButton,
     Alert
 } from '@mui/material';
-import { Add as AddIcon, Visibility as VisibilityIcon } from '@mui/icons-material';
+import { Add as AddIcon, Visibility as VisibilityIcon, Close as CloseIcon } from '@mui/icons-material';
 import { paymentsService } from '../services/payments.service';
 import { teamsService, type Team } from '../services/teams.service';
 import { tournamentsService, type Campeonato } from '../services/tournaments.service';
 import type { ValidacionPago } from '../types';
 import { PaymentUpload } from './PaymentUpload';
+import { API_CONFIG } from '../config/api';
 
 interface MyPaymentsProps {
     userId: number;
@@ -43,6 +44,7 @@ export const MyPayments: React.FC<MyPaymentsProps> = () => {
     const [tournaments, setTournaments] = useState<Campeonato[]>([]);
     const [selectedTournament, setSelectedTournament] = useState('');
     const [showPaymentModal, setShowPaymentModal] = useState(false);
+    const [viewProofUrl, setViewProofUrl] = useState<string | null>(null);
 
     useEffect(() => {
         loadPayments();
@@ -55,7 +57,7 @@ export const MyPayments: React.FC<MyPaymentsProps> = () => {
             const data = await paymentsService.getAll();
             setPayments(data);
         } catch (err) {
-            console.error('Error loading payments:', err);
+            console.error('Error al cargar pagos:', err);
             setError('Error al cargar historial de pagos.');
         } finally {
             setLoading(false);
@@ -69,7 +71,7 @@ export const MyPayments: React.FC<MyPaymentsProps> = () => {
             const tourneys = await tournamentsService.getCampeonatos();
             setTournaments(tourneys);
         } catch (err) {
-            console.error('Error loading options:', err);
+            console.error('Error al cargar opciones:', err);
         }
     };
 
@@ -90,6 +92,18 @@ export const MyPayments: React.FC<MyPaymentsProps> = () => {
             case 'RECHAZADO': return 'error';
             default: return 'warning';
         }
+    };
+
+    const getImageUrl = (url: string) => {
+        if (!url) return '';
+        if (url.startsWith('http')) return url;
+
+        // Remove /api from end of BASE_URL to get the root URL where static files are served
+        const baseUrl = API_CONFIG.BASE_URL.endsWith('/api')
+            ? API_CONFIG.BASE_URL.slice(0, -4)
+            : API_CONFIG.BASE_URL;
+
+        return `${baseUrl}${url}`;
     };
 
     return (
@@ -149,10 +163,8 @@ export const MyPayments: React.FC<MyPaymentsProps> = () => {
                                     <TableCell>
                                         {payment.comprobanteUrl && (
                                             <IconButton
-                                                component="a"
-                                                href={payment.comprobanteUrl}
-                                                target="_blank"
                                                 size="small"
+                                                onClick={() => setViewProofUrl(getImageUrl(payment.comprobanteUrl))}
                                             >
                                                 <VisibilityIcon />
                                             </IconButton>
@@ -171,6 +183,39 @@ export const MyPayments: React.FC<MyPaymentsProps> = () => {
                     </Table>
                 </TableContainer>
             )}
+
+            {/* Proof Viewer Dialog */}
+            <Dialog
+                open={!!viewProofUrl}
+                onClose={() => setViewProofUrl(null)}
+                maxWidth="md"
+                fullWidth
+                PaperProps={{
+                    sx: { borderRadius: 3, overflow: 'hidden' }
+                }}
+            >
+                <Box sx={{ position: 'relative', bgcolor: '#000', minHeight: 400, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <IconButton
+                        onClick={() => setViewProofUrl(null)}
+                        sx={{
+                            position: 'absolute',
+                            right: 12,
+                            top: 12,
+                            bgcolor: 'rgba(0,0,0,0.5)',
+                            color: 'white',
+                            zIndex: 1,
+                            '&:hover': { bgcolor: 'rgba(0,0,0,0.7)' }
+                        }}
+                    >
+                        <CloseIcon />
+                    </IconButton>
+                    <img
+                        src={viewProofUrl || ''}
+                        alt="Comprobante"
+                        style={{ maxWidth: '100%', maxHeight: '85vh', display: 'block', objectFit: 'contain' }}
+                    />
+                </Box>
+            </Dialog>
 
             {/* Selection Modal */}
             <Dialog open={openUploadModal} onClose={() => setOpenUploadModal(false)} maxWidth="sm" fullWidth>

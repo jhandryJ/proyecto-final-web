@@ -50,6 +50,7 @@ model equipo {
   facultad   String?
   capitanId  Int
   disciplina String?
+  genero     String? @default("MIXTO")
   codigoAcceso String?
 
   capitan    usuario @relation("EquipoCapitan", fields: [capitanId], references: [id])
@@ -84,6 +85,7 @@ model carrera {
   facultad facultad  @relation(fields: [facultadId], references: [id])
   usuarios usuario[]
 
+  @@unique([nombre, facultadId])
   @@index([facultadId], map: "Carrera_facultadId_fkey")
 }
 

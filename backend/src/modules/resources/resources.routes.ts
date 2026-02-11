@@ -14,7 +14,9 @@ import {
     createArbitroSchema,
     arbitroResponseSchema,
     createCanchaSchema,
-    canchaResponseSchema
+    canchaResponseSchema,
+    facultadResponseSchema,
+    carreraResponseSchema
 } from './resources.schemas.js';
 
 export async function resourceRoutes(app: FastifyInstance) {
@@ -28,18 +30,25 @@ export async function resourceRoutes(app: FastifyInstance) {
     app.withTypeProvider<ZodTypeProvider>().get('/facultades', {
         schema: {
             tags: ['Recursos'],
-            summary: 'List all faculties',
-            description: 'Public endpoint for registration forms',
-            // response schema simplified 
+            summary: 'Obtener todas las facultades',
+            description: 'Endpoint público para obtener todas las facultades de UIDE con sus carreras',
+            response: {
+                200: z.array(facultadResponseSchema)
+            }
         }
     }, getFacultiesHandler);
 
     app.withTypeProvider<ZodTypeProvider>().get('/carreras', {
         schema: {
             tags: ['Recursos'],
-            summary: 'List careers (optional filter by facultadId)',
-            description: 'Public endpoint for registration forms',
-            querystring: z.object({ facultadId: z.string().optional() }),
+            summary: 'Obtener carreras',
+            description: 'Endpoint público para obtener carreras, opcionalmente filtradas por facultad',
+            querystring: z.object({
+                facultadId: z.string().optional().describe('ID de la facultad para filtrar carreras')
+            }),
+            response: {
+                200: z.array(carreraResponseSchema)
+            }
         }
     }, getCareersHandler);
 

@@ -52,7 +52,7 @@ export function EnrollmentManager({ isOpen, onClose, torneoId, onSuccess }: Enro
             setEnrollments(enrollmentsData);
             setTeams(teamsData);
         } catch (err) {
-            console.error('Error loading data:', err);
+            console.error('Error al cargar datos:', err);
             setError('Error al cargar los datos');
         }
     };
@@ -73,7 +73,7 @@ export function EnrollmentManager({ isOpen, onClose, torneoId, onSuccess }: Enro
             await loadData();
             onSuccess();
         } catch (err: any) {
-            console.error('Error enrolling team:', err);
+            console.error('Error al inscribir equipo:', err);
             setError(err.response?.data?.message || 'Error al inscribir el equipo');
         } finally {
             setLoading(false);
@@ -86,7 +86,7 @@ export function EnrollmentManager({ isOpen, onClose, torneoId, onSuccess }: Enro
             await loadData();
             onSuccess();
         } catch (err: any) {
-            console.error('Error updating status:', err);
+            console.error('Error al actualizar estado:', err);
             setError(err.response?.data?.message || 'Error al actualizar el estado');
         }
     };
@@ -99,7 +99,7 @@ export function EnrollmentManager({ isOpen, onClose, torneoId, onSuccess }: Enro
             await loadData();
             onSuccess();
         } catch (err: any) {
-            console.error('Error removing enrollment:', err);
+            console.error('Error al eliminar inscripción:', err);
             setError(err.response?.data?.message || 'Error al eliminar la inscripción');
         }
     };

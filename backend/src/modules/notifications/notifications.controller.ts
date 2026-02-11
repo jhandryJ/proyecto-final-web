@@ -34,3 +34,20 @@ export async function markAllNotificationsReadHandler(
     await markAllAsRead(user.id);
     return reply.code(204).send();
 }
+
+export async function deleteNotificationHandler(
+    request: FastifyRequest<{ Params: { id: string } }>,
+    reply: FastifyReply
+) {
+    const { id } = request.params;
+    const user = request.user as { id: number };
+    const { deleteNotification } = await import('../../services/notification.service.js');
+
+    const result = await deleteNotification(Number(id), user.id);
+
+    if (!result) {
+        return reply.code(404).send({ message: 'Notificación no encontrada' });
+    }
+
+    return reply.code(204).send();
+}

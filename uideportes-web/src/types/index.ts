@@ -96,6 +96,7 @@ export interface Team {
     logoUrl?: string;
     facultad?: string;
     disciplina?: Disciplina | string;
+    genero?: Genero | string;
     capitanId: number;
     capitan?: {
         id: number;

@@ -13,7 +13,8 @@ import {
     Badge as BadgeIcon,
     Wc as GenderIcon,
     CalendarToday as CalendarIcon,
-    School as SchoolIcon
+    School as SchoolIcon,
+    Refresh as RefreshIcon
 } from '@mui/icons-material';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import { Header } from '../../components/Header';
@@ -235,14 +236,16 @@ const UserTeams = ({
     onCreateClick,
     onJoinClick,
     onLeaveClick,
-    onViewMembers
+    onViewMembers,
+    onRefresh
 }: {
     teams: Team[],
     availableTeams: Team[],
     onCreateClick: () => void,
     onJoinClick: (id: number) => void,
     onLeaveClick: (id: number) => void,
-    onViewMembers: (id: number) => void
+    onViewMembers: (id: number) => void,
+    onRefresh: () => void
 }) => {
     const [subTab, setSubTab] = useState(0);
     const { user } = useAuth();
@@ -251,14 +254,23 @@ const UserTeams = ({
         <Box sx={{ animation: 'fadeIn 0.5s ease-out' }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
                 <Typography variant="h5" fontWeight="900" color="#001F52">Gestión de Equipos</Typography>
-                <Button
-                    variant="contained"
-                    startIcon={<AddIcon />}
-                    onClick={onCreateClick}
-                    sx={{ borderRadius: 1.5, textTransform: 'none', px: 3, background: 'linear-gradient(135deg, #001F52 0%, #003366 100%)', color: 'white', fontWeight: 700 }}
-                >
-                    Crear Equipo
-                </Button>
+                <Box sx={{ display: 'flex', gap: 2 }}>
+                    <Button
+                        startIcon={<RefreshIcon />}
+                        onClick={onRefresh}
+                        sx={{ color: '#001F52' }}
+                    >
+                        Actualizar
+                    </Button>
+                    <Button
+                        variant="contained"
+                        startIcon={<AddIcon />}
+                        onClick={onCreateClick}
+                        sx={{ px: 3 }}
+                    >
+                        Crear Equipo
+                    </Button>
+                </Box>
             </Box>
 
             <Paper sx={{ mb: 4, borderRadius: 2, bgcolor: '#fff', border: '1px solid rgba(0,0,0,0.1)', overflow: 'hidden' }}>
@@ -375,7 +387,6 @@ const UserTeams = ({
                                                 size="small"
                                                 fullWidth
                                                 onClick={() => onJoinClick(team.id)}
-                                                sx={{ borderRadius: 2.5, textTransform: 'none', fontWeight: 800, bgcolor: '#001F52', color: 'white !important', '&:hover': { bgcolor: '#003366' } }}
                                             >
                                                 Unirse al Equipo
                                             </Button>
@@ -395,18 +406,29 @@ const UserTournaments = ({
     tournaments,
     userTeams,
     onRegisterClick,
-    onViewBracket
+    onViewBracket,
+    onRefresh
 }: {
     tournaments: Campeonato[],
     userTeams: Team[],
     onRegisterClick: (torneo: Torneo) => void,
-    onViewBracket: (id: number) => void
+    onViewBracket: (id: number) => void,
+    onRefresh: () => void
 }) => {
     const activeChampionships = tournaments.filter(t => t.torneos && t.torneos.length > 0);
 
     return (
         <Box sx={{ animation: 'fadeIn 0.5s ease-out' }}>
-            <Typography variant="h5" sx={{ mb: 3, fontWeight: 900, color: '#001F52' }}>Torneos Activos</Typography>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+                <Typography variant="h5" sx={{ fontWeight: 900, color: '#001F52' }}>Torneos Activos</Typography>
+                <Button
+                    startIcon={<RefreshIcon />}
+                    onClick={onRefresh}
+                    sx={{ color: '#001F52' }}
+                >
+                    Actualizar
+                </Button>
+            </Box>
             {activeChampionships.length === 0 ? (
                 <GlassCard sx={{ p: 4, textAlign: 'center' }}>
                     <Typography color="text.secondary">No hay torneos activos en este momento.</Typography>
@@ -524,15 +546,6 @@ const UserTournaments = ({
                                                                 variant="contained"
                                                                 disableElevation
                                                                 onClick={() => onRegisterClick(t)}
-                                                                sx={{
-                                                                    borderRadius: 2.5,
-                                                                    fontSize: '0.8rem',
-                                                                    textTransform: 'none',
-                                                                    fontWeight: 800,
-                                                                    backgroundColor: '#EDB112 !important',
-                                                                    color: '#001F52 !important',
-                                                                    '&:hover': { backgroundColor: '#f5c64d !important', transform: 'scale(1.05)' }
-                                                                }}
                                                             >
                                                                 Inscribirse
                                                             </Button>
@@ -840,7 +853,7 @@ export const UserDashboard = () => {
             setTournaments(camps);
             setNextMatch(nextM);
         } catch (error) {
-            console.error("Error loading dashboard data:", error);
+            console.error("Error al cargar datos del dashboard:", error);
         }
     };
 
@@ -866,7 +879,7 @@ export const UserDashboard = () => {
             setAvailableTeams(availTeams.filter(t => !myTeams.some(mt => mt.id === t.id)));
             showNotification("Equipo creado exitosamente", "success");
         } catch (error) {
-            console.error("Error creating team:", error);
+            console.error("Error al crear equipo:", error);
             showNotification("Error al crear equipo", "error");
         }
     };
@@ -885,7 +898,7 @@ export const UserDashboard = () => {
             setAvailableTeams(availTeams.filter(t => !myTeams.some(mt => mt.id === t.id)));
             showNotification("Te has unido al equipo exitosamente", "success");
         } catch (error) {
-            console.error("Error joining team:", error);
+            console.error("Error al unirse al equipo:", error);
             showNotification("Error al unirse al equipo (quizás ya eres miembro)", "error");
         }
     };
@@ -904,7 +917,7 @@ export const UserDashboard = () => {
             setAvailableTeams(availTeams.filter(t => !myTeams.some(mt => mt.id === t.id)));
             showNotification("Has salido del equipo exitosamente", "success");
         } catch (error: any) {
-            console.error("Error leaving team:", error);
+            console.error("Error al salir del equipo:", error);
             showNotification(error.response?.data?.message || "Error al salir del equipo", "error");
         }
     };
@@ -915,7 +928,7 @@ export const UserDashboard = () => {
             setSelectedTeamForMembers(teamData);
             setIsMembersModalOpen(true);
         } catch (error) {
-            console.error("Error fetching team members:", error);
+            console.error("Error al obtener miembros del equipo:", error);
             showNotification("Error al cargar los miembros del equipo", "error");
         }
     };
@@ -1077,6 +1090,7 @@ export const UserDashboard = () => {
                             onJoinClick={handleJoinTeam}
                             onLeaveClick={handleLeaveTeam}
                             onViewMembers={handleViewMembers}
+                            onRefresh={loadData}
                         />
                     )}
                     {currentTab === 2 && (
@@ -1085,6 +1099,7 @@ export const UserDashboard = () => {
                             userTeams={userTeams}
                             onRegisterClick={handleRegisterClick}
                             onViewBracket={handleViewBracket}
+                            onRefresh={loadData}
                         />
                     )}
                     {currentTab === 3 && (
